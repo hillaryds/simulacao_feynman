@@ -7,7 +7,7 @@ import '../../core/physgame_theme.dart';
 import '../../simulation/gas_engine.dart';
 import '../../simulation/gas_particle.dart';
 
-enum PressureUnit { kPa, atm, mmHg }
+enum PressureUnit { kPa, atm, mmHg, kgfCm2, bar, psi }
 
 enum TemperatureUnit { kelvin, celsius, fahrenheit }
 
@@ -101,20 +101,62 @@ double pressureInUnit(GasEngine e, PressureUnit u) {
       return e.pressureAtm;
     case PressureUnit.mmHg:
       return e.pressureMmHg;
+    case PressureUnit.kgfCm2:
+      // 1 kgf/cm² = 98066,5 Pa
+      return e.pressurePa / 98066.5;
+    case PressureUnit.bar:
+      return e.pressurePa / 100000.0;
+    case PressureUnit.psi:
+      return e.pressurePa / 6894.757;
   }
 }
 
-/// Fundo de escala do manômetro em cada unidade (≈ 350 kPa).
-double gaugeMax(PressureUnit u) {
+/// Escala graduada do manômetro em uma unidade: fundo de escala, número de
+/// divisões maiores, subdivisões e quais divisões recebem número.
+class GaugeScale {
+  final double max;
+  final int majors;
+  final int minorsPerMajor;
+  final int labelEvery;
+  final String unit;
+
+  const GaugeScale({
+    required this.max,
+    required this.majors,
+    required this.minorsPerMajor,
+    required this.labelEvery,
+    required this.unit,
+  });
+
+  /// Valor da menor divisão da escala.
+  double get smallestDivision => max / (majors * minorsPerMajor);
+}
+
+GaugeScale gaugeScale(PressureUnit u) {
   switch (u) {
     case PressureUnit.kPa:
-      return 350;
+      return const GaugeScale(
+          max: 400, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'kPa');
     case PressureUnit.atm:
-      return 3.5;
+      return const GaugeScale(
+          max: 4, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'atm');
     case PressureUnit.mmHg:
-      return 2800;
+      return const GaugeScale(
+          max: 3000, majors: 6, minorsPerMajor: 5, labelEvery: 2, unit: 'mmHg');
+    case PressureUnit.kgfCm2:
+      return const GaugeScale(
+          max: 4, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'kgf/cm²');
+    case PressureUnit.bar:
+      return const GaugeScale(
+          max: 4, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'bar');
+    case PressureUnit.psi:
+      return const GaugeScale(
+          max: 60, majors: 6, minorsPerMajor: 5, labelEvery: 1, unit: 'psi');
   }
 }
+
+/// Fundo de escala do manômetro em cada unidade.
+double gaugeMax(PressureUnit u) => gaugeScale(u).max;
 
 String pressureUnitLabel(PressureUnit u) {
   switch (u) {
@@ -124,12 +166,32 @@ String pressureUnitLabel(PressureUnit u) {
       return 'atm';
     case PressureUnit.mmHg:
       return 'mmHg';
+    case PressureUnit.kgfCm2:
+      return 'kgf/cm²';
+    case PressureUnit.bar:
+      return 'bar';
+    case PressureUnit.psi:
+      return 'psi';
   }
 }
 
 String formatPressure(GasEngine e, PressureUnit u) {
   final v = pressureInUnit(e, u);
-  final digits = u == PressureUnit.kPa ? 1 : (u == PressureUnit.atm ? 2 : 0);
+  final int digits;
+  switch (u) {
+    case PressureUnit.kPa:
+    case PressureUnit.psi:
+      digits = 1;
+      break;
+    case PressureUnit.mmHg:
+      digits = 0;
+      break;
+    case PressureUnit.atm:
+    case PressureUnit.kgfCm2:
+    case PressureUnit.bar:
+      digits = 2;
+      break;
+  }
   return '${_comma(v, digits)} ${pressureUnitLabel(u)}';
 }
 
@@ -313,6 +375,7 @@ void _drawDropArrow(Canvas canvas, Offset topLeft) {
 // ─────────────────────────────────────────────────────────────────────────
 // Manômetro estilo PhET (também usado no painel "Análise em tempo real").
 // [fraction] vai de 0 a 1 ao longo de 240° (de 150° a 390°).
+// A escala é numerada e mostra a unidade, como em um manômetro real.
 // ─────────────────────────────────────────────────────────────────────────
 void paintPhetGauge(
   Canvas canvas,
@@ -320,8 +383,10 @@ void paintPhetGauge(
   double outerRadius,
   double fraction, {
   String label = 'Pressão',
+  GaugeScale? scale,
 }) {
   final s = outerRadius / 70.0;
+  final sc = scale ?? gaugeScale(PressureUnit.kPa);
 
   // Aro metálico
   canvas.drawCircle(
@@ -340,29 +405,61 @@ void paintPhetGauge(
   canvas.drawCircle(center, 62 * s, _fill(const Color(0xFFF9FAFB)));
   canvas.drawCircle(center, 62 * s, _stroke(PhysGameColors.metalDark, 1.5 * s));
 
-  // Marcas (25 → uma maior a cada 4)
-  for (int i = 0; i <= 24; i++) {
-    final a = (150 + 240 * (i / 24)) * math.pi / 180;
-    final major = i % 4 == 0;
-    final r1 = (major ? 44 : 50) * s;
-    final r2 = 58 * s;
+  // Escala graduada: divisões menores, maiores e números.
+  final total = sc.majors * sc.minorsPerMajor;
+  for (int i = 0; i <= total; i++) {
+    final a = (150 + 240 * (i / total)) * math.pi / 180;
+    final major = i % sc.minorsPerMajor == 0;
+    final r1 = (major ? 49 : 53) * s;
+    final r2 = 59 * s;
     canvas.drawLine(
       Offset(center.dx + math.cos(a) * r1, center.dy + math.sin(a) * r1),
       Offset(center.dx + math.cos(a) * r2, center.dy + math.sin(a) * r2),
       _stroke(
         PhysGameColors.navy,
-        (major ? 2.6 : 1.4) * s,
+        (major ? 2.2 : 1.0) * s,
         cap: StrokeCap.round,
       ),
     );
+
+    final majorIndex = i ~/ sc.minorsPerMajor;
+    if (major && majorIndex % sc.labelEvery == 0) {
+      final value = sc.max * majorIndex / sc.majors;
+      final text = value == value.roundToDouble()
+          ? value.round().toString()
+          : _comma(value, 1);
+      _drawText(
+        canvas,
+        text,
+        Offset(
+          center.dx + math.cos(a) * 38 * s,
+          center.dy + math.sin(a) * 38 * s,
+        ),
+        size: 9.5 * s,
+        color: PhysGameColors.navy,
+        weight: FontWeight.w700,
+        align: TextAlign.center,
+      );
+    }
   }
 
   _drawText(
     canvas,
     label,
-    center.translate(0, -15 * s),
-    size: 15 * s,
-    color: PhysGameColors.navy,
+    center.translate(0, -16 * s),
+    size: 10 * s,
+    color: PhysGameColors.slate,
+    align: TextAlign.center,
+  );
+
+  // Unidade no vão inferior da escala.
+  _drawText(
+    canvas,
+    sc.unit,
+    center.translate(0, 38 * s),
+    size: 11 * s,
+    color: PhysGameColors.purple,
+    weight: FontWeight.w800,
     align: TextAlign.center,
   );
 
@@ -370,14 +467,14 @@ void paintPhetGauge(
   final f = fraction.clamp(0.0, 1.0);
   final angle = (150 + 240 * f) * math.pi / 180;
   final tip = Offset(
-    center.dx + math.cos(angle) * 46 * s,
-    center.dy + math.sin(angle) * 46 * s,
+    center.dx + math.cos(angle) * 54 * s,
+    center.dy + math.sin(angle) * 54 * s,
   );
 
   canvas.drawLine(
     center,
     tip,
-    _stroke(PhysGameColors.mercury, 4 * s, cap: StrokeCap.round),
+    _stroke(PhysGameColors.mercury, 3 * s, cap: StrokeCap.round),
   );
   canvas.drawCircle(center, 6 * s, _fill(PhysGameColors.navy));
   canvas.drawCircle(center, 2.5 * s, _fill(PhysGameColors.mercury));
@@ -426,7 +523,9 @@ class LabStagePainter extends CustomPainter {
 
     // Escala de volume (à esquerda).
     for (int i = 1; i <= 5; i++) {
-      final y = _t + (0.69 - ((i - 1) / 4.0) * 0.56) * StageGeometry.chamberH;
+      final y = _t +
+          (GasEngine.wallBottom - GasEngine.heightPerL * i) *
+              StageGeometry.chamberH;
       canvas.drawLine(
         Offset(44, y),
         Offset(54, y),
@@ -640,6 +739,7 @@ class LabStagePainter extends CustomPainter {
       StageGeometry.gaugeCenter,
       StageGeometry.gaugeRadius,
       pressureInUnit(engine, unit) / gaugeMax(unit),
+      scale: gaugeScale(unit),
     );
 
     _paintReadout(
@@ -657,8 +757,8 @@ class LabStagePainter extends CustomPainter {
     _drawText(
       canvas,
       text,
-      Offset(box.right - 34, box.center.dy),
-      size: 14,
+      Offset(box.right - 26, box.center.dy),
+      size: text.length > 10 ? 12 : 14,
       color: PhysGameColors.navy,
       align: TextAlign.right,
     );
@@ -692,7 +792,8 @@ class LabStagePainter extends CustomPainter {
 
     // Mercúrio
     canvas.drawCircle(const Offset(507, 178), 11, _fill(PhysGameColors.mercury));
-    final frac = (engine.temperatureK / 700.0).clamp(0.0, 1.0);
+    final frac =
+        (engine.temperatureK / GasEngine.maxTemperatureK).clamp(0.0, 1.0);
     final merc = frac * 112;
     canvas.drawRect(
       Rect.fromLTRB(503, 178 - merc, 511, 178),

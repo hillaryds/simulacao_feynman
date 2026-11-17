@@ -8,97 +8,79 @@ import '../../simulation/gas_particle.dart';
 import 'lab_painters.dart';
 import 'lab_stage.dart';
 
-/// Laboratório completo no estilo PhET "Propriedades dos Gases":
-/// palco à esquerda e painéis escuros à direita (abaixo em telas estreitas).
-class PhetLab extends StatefulWidget {
+/// Moldura do palco: a câmara dentro de um cartão que mantém a proporção
+/// do desenho e ocupa o maior espaço disponível.
+class LabStageCard extends StatelessWidget {
   final GasEngine engine;
-
-  /// Chamado sempre que algo muda e a tela precisa redesenhar.
+  final LabViewState view;
   final VoidCallback onChanged;
-
-  /// Chamado pelo botão laranja de reiniciar.
   final VoidCallback onReset;
 
-  const PhetLab({
+  const LabStageCard({
     super.key,
     required this.engine,
+    required this.view,
     required this.onChanged,
     required this.onReset,
   });
 
-  @override
-  State<PhetLab> createState() => _PhetLabState();
-}
+  static const double _padding = 12;
 
-class _PhetLabState extends State<PhetLab> {
-  static const int _maxParticles = 150;
-
-  final LabViewState view = LabViewState();
-
-  GasEngine get engine => widget.engine;
-
-  void _changed() => widget.onChanged();
-
-  void _reset() {
-    widget.onReset();
-    view.resetTools();
-  }
+  /// Proporção do cartão inteiro (palco + margem interna).
+  static const double aspectRatio =
+      (StageGeometry.width + 2 * _padding) /
+          (StageGeometry.height + 2 * _padding);
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 920;
-
-        final stage = Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: PhysGameColors.stage,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: LabStage(
-            engine: engine,
-            view: view,
-            onChanged: _changed,
-            onReset: _reset,
-          ),
-        );
-
-        if (wide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: stage),
-              const SizedBox(width: 16),
-              SizedBox(width: 320, child: _panels()),
-            ],
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            stage,
-            const SizedBox(height: 16),
-            _panels(),
-          ],
-        );
-      },
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: Container(
+        padding: const EdgeInsets.all(_padding),
+        decoration: BoxDecoration(
+          color: PhysGameColors.stage,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: PhysGameColors.line),
+        ),
+        child: LabStage(
+          engine: engine,
+          view: view,
+          onChanged: onChanged,
+          onReset: onReset,
+        ),
+      ),
     );
   }
+}
 
-  // ── Painéis laterais ────────────────────────────────────────────────
-  Widget _panels() {
+/// Painéis de controle do laboratório: partículas, variável constante,
+/// ferramentas de medida e ajuste fino.
+class LabPanels extends StatelessWidget {
+  final GasEngine engine;
+  final LabViewState view;
+  final VoidCallback onChanged;
+
+  const LabPanels({
+    super.key,
+    required this.engine,
+    required this.view,
+    required this.onChanged,
+  });
+
+  static const int _maxParticles = 150;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _particlesPanel(),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _constantPanel(),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _toolsPanel(),
-        const SizedBox(height: 14),
-        _finePanel(),
+        const SizedBox(height: 12),
+        _finePanel(context),
       ],
     );
   }
@@ -108,45 +90,60 @@ class _PhetLabState extends State<PhetLab> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: PhysGameColors.panel,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: PhysGameColors.panelBorder),
+        color: PhysGameColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: PhysGameColors.line),
       ),
       child: child,
     );
   }
 
-  static const TextStyle _title = TextStyle(
-    color: Colors.white,
-    fontSize: 19,
-    fontWeight: FontWeight.w800,
-  );
-
   static const TextStyle _label = TextStyle(
-    color: Colors.white,
-    fontSize: 16,
+    color: PhysGameColors.text,
+    fontSize: 14,
     fontWeight: FontWeight.w600,
   );
 
-  Widget _collapseButton(bool open, VoidCallback onTap) {
+  Widget _header(
+    IconData icon,
+    String title, {
+    bool? open,
+    VoidCallback? onToggle,
+  }) {
+    final row = Row(
+      children: [
+        Icon(icon, size: 18, color: PhysGameColors.accentText),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: PhysGameColors.text,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        if (open != null)
+          Icon(
+            open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+            size: 22,
+            color: PhysGameColors.muted,
+          ),
+      ],
+    );
+
+    if (onToggle == null) return row;
+
     return Semantics(
       button: true,
-      label: open ? 'Recolher painel' : 'Expandir painel',
+      label: open == true ? 'Recolher painel' : 'Expandir painel',
       child: InkWell(
-        borderRadius: BorderRadius.circular(5),
-        onTap: onTap,
-        child: Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: PhysGameColors.orange,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: Icon(
-            open ? Icons.remove : Icons.add,
-            size: 16,
-            color: Colors.white,
-          ),
+        borderRadius: BorderRadius.circular(8),
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: row,
         ),
       ),
     );
@@ -158,15 +155,14 @@ class _PhetLabState extends State<PhetLab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              _collapseButton(view.particlesPanelOpen, () {
-                view.particlesPanelOpen = !view.particlesPanelOpen;
-                _changed();
-              }),
-              const SizedBox(width: 12),
-              const Text('Partículas', style: _title),
-            ],
+          _header(
+            Icons.bubble_chart_rounded,
+            'Partículas',
+            open: view.particlesPanelOpen,
+            onToggle: () {
+              view.particlesPanelOpen = !view.particlesPanelOpen;
+              onChanged();
+            },
           ),
           if (view.particlesPanelOpen) ...[
             const SizedBox(height: 14),
@@ -176,7 +172,7 @@ class _PhetLabState extends State<PhetLab> {
               species: ParticleSpecies.light,
               count: engine.lightCount,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             _speciesBlock(
               color: PhysGameColors.heavyParticle,
               label: 'Pesada',
@@ -198,12 +194,12 @@ class _PhetLabState extends State<PhetLab> {
     void add(int n) {
       final room = math.max(0, _maxParticles - engine.totalCount);
       engine.addParticles(species, math.min(n, room));
-      _changed();
+      onChanged();
     }
 
     void remove(int n) {
       engine.removeParticles(species, n);
-      _changed();
+      onChanged();
     }
 
     return Column(
@@ -212,62 +208,72 @@ class _PhetLabState extends State<PhetLab> {
         Row(
           children: [
             Container(
-              width: 11,
-              height: 11,
+              width: 10,
+              height: 10,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 8),
-            Text(label, style: _label.copyWith(fontWeight: FontWeight.w700)),
+            Text(label, style: _label),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            _stepButton(Icons.arrow_left, 'Remover 1', () => remove(1)),
-            const SizedBox(width: 5),
-            _stepButton(Icons.fast_rewind, 'Remover 5', () => remove(5)),
-            const SizedBox(width: 5),
+            _stepButton('−5', 'Remover 5', () => remove(5)),
+            const SizedBox(width: 6),
+            _stepButton('−1', 'Remover 1', () => remove(1)),
+            const SizedBox(width: 6),
             Expanded(
               child: Container(
-                height: 28,
+                height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+                  color: PhysGameColors.bg,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: color.withValues(alpha: .6)),
                 ),
                 child: Text(
                   '$count',
                   style: const TextStyle(
-                    color: PhysGameColors.navy,
+                    color: PhysGameColors.text,
                     fontWeight: FontWeight.w800,
-                    fontSize: 15,
+                    fontSize: 16,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 5),
-            _stepButton(Icons.fast_forward, 'Adicionar 5', () => add(5)),
-            const SizedBox(width: 5),
-            _stepButton(Icons.arrow_right, 'Adicionar 1', () => add(1)),
+            const SizedBox(width: 6),
+            _stepButton('+1', 'Adicionar 1', () => add(1)),
+            const SizedBox(width: 6),
+            _stepButton('+5', 'Adicionar 5', () => add(5)),
           ],
         ),
       ],
     );
   }
 
-  Widget _stepButton(IconData icon, String tooltip, VoidCallback onTap) {
+  Widget _stepButton(String text, String tooltip, VoidCallback onTap) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: PhysGameColors.metalMid,
-        borderRadius: BorderRadius.circular(4),
+        color: PhysGameColors.surfaceHi,
+        borderRadius: BorderRadius.circular(9),
         child: InkWell(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(9),
           onTap: onTap,
           child: SizedBox(
-            width: 30,
-            height: 28,
-            child: Icon(icon, size: 20, color: PhysGameColors.navy),
+            width: 40,
+            height: 34,
+            child: Center(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: PhysGameColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -278,37 +284,90 @@ class _PhetLabState extends State<PhetLab> {
   Widget _constantPanel() {
     final hasGas = engine.totalCount > 0;
 
-    Widget radio(String text, ConstantMode mode, {bool enabled = true}) {
+    Widget radio(
+      String text,
+      String hint,
+      ConstantMode mode, {
+      bool enabled = true,
+    }) {
       final selected = engine.constantMode == mode;
-      final fg = enabled ? Colors.white : PhysGameColors.metalDark;
 
-      return InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: enabled
-            ? () {
-                engine.setConstantMode(mode);
-                _changed();
-              }
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Row(
-            children: [
-              Container(
-                width: 20,
-                height: 20,
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Opacity(
+          opacity: enabled ? 1 : .4,
+          child: Material(
+            color: selected
+                ? PhysGameColors.purple2.withValues(alpha: .16)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: enabled
+                  ? () {
+                      engine.setConstantMode(mode);
+                      onChanged();
+                    }
+                  : null,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: selected ? PhysGameColors.purple2 : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: enabled ? Colors.white : PhysGameColors.metalEdge,
-                    width: 2,
+                    color: selected
+                        ? PhysGameColors.purple2
+                        : PhysGameColors.line,
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: selected
+                              ? PhysGameColors.purple2
+                              : PhysGameColors.muted,
+                          width: 2,
+                        ),
+                      ),
+                      child: selected
+                          ? Center(
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: PhysGameColors.purple2,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        text,
+                        style: _label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      hint,
+                      style: const TextStyle(
+                        color: PhysGameColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 12),
-              Text(text, style: _label.copyWith(color: fg)),
-            ],
+            ),
           ),
         ),
       );
@@ -318,13 +377,28 @@ class _PhetLabState extends State<PhetLab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Manter constante', style: _title),
-          const SizedBox(height: 8),
-          radio('Nada', ConstantMode.none),
-          radio('Volume (V)', ConstantMode.volume),
-          radio('Temperatura (T)', ConstantMode.temperature, enabled: hasGas),
-          radio('Pressão ↕V', ConstantMode.pressure, enabled: hasGas),
-          radio('Pressão ↕T', ConstantMode.pressureT, enabled: hasGas),
+          _header(Icons.lock_outline_rounded, 'Manter constante'),
+          const SizedBox(height: 6),
+          radio('Nada', 'livre', ConstantMode.none),
+          radio('Volume (V)', 'tampa fixa', ConstantMode.volume),
+          radio(
+            'Temperatura (T)',
+            'termostato',
+            ConstantMode.temperature,
+            enabled: hasGas,
+          ),
+          radio(
+            'Pressão',
+            'V varia',
+            ConstantMode.pressure,
+            enabled: hasGas,
+          ),
+          radio(
+            'Pressão',
+            'T varia',
+            ConstantMode.pressureT,
+            enabled: hasGas,
+          ),
         ],
       ),
     );
@@ -336,85 +410,80 @@ class _PhetLabState extends State<PhetLab> {
       required String text,
       required bool value,
       required ValueChanged<bool> onChanged,
-      required Widget trailing,
+      required Color color,
     }) {
       return InkWell(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         onTap: () => onChanged(!value),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(
             children: [
               Container(
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+                  color: value ? color : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: value ? color : PhysGameColors.muted,
+                    width: 2,
+                  ),
                 ),
                 child: value
-                    ? const Icon(Icons.check, size: 17, color: PhysGameColors.navy)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 15,
+                        color: PhysGameColors.navy,
+                      )
                     : null,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   text,
-                  style: _label.copyWith(fontSize: 15),
+                  style: _label,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              trailing,
             ],
           ),
         ),
       );
     }
 
-    Widget swatch(Color fill, Color edge) => Container(
-          width: 36,
-          height: 20,
-          decoration: BoxDecoration(
-            color: fill,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: edge, width: 1.5),
-          ),
-        );
-
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _header(Icons.straighten_rounded, 'Ferramentas'),
+          const SizedBox(height: 6),
           check(
             text: 'Régua de volume',
             value: view.showRuler,
+            color: PhysGameColors.amber,
             onChanged: (v) {
               view.showRuler = v;
-              _changed();
+              onChanged();
             },
-            trailing: const Icon(
-              Icons.height,
-              size: 22,
-              color: PhysGameColors.amber,
-            ),
           ),
           check(
             text: 'Cronômetro',
             value: view.showStopwatch,
+            color: PhysGameColors.accentText,
             onChanged: (v) {
               view.showStopwatch = v;
-              _changed();
+              onChanged();
             },
-            trailing: swatch(PhysGameColors.purple2, const Color(0xFFC7C0FF)),
           ),
           check(
             text: 'Contador de colisões',
             value: view.showCollisions,
+            color: PhysGameColors.amber,
             onChanged: (v) {
               view.showCollisions = v;
-              _changed();
+              onChanged();
             },
-            trailing: swatch(PhysGameColors.amber, const Color(0xFFFDE68A)),
           ),
         ],
       ),
@@ -422,27 +491,27 @@ class _PhetLabState extends State<PhetLab> {
   }
 
   // ── Ajuste fino (sliders originais do protótipo) ────────────────────
-  Widget _finePanel() {
+  Widget _finePanel(BuildContext context) {
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              _collapseButton(view.finePanelOpen, () {
-                view.finePanelOpen = !view.finePanelOpen;
-                _changed();
-              }),
-              const SizedBox(width: 12),
-              const Text('Ajuste fino', style: _title),
-            ],
+          _header(
+            Icons.tune_rounded,
+            'Ajuste fino',
+            open: view.finePanelOpen,
+            onToggle: () {
+              view.finePanelOpen = !view.finePanelOpen;
+              onChanged();
+            },
           ),
           if (view.finePanelOpen) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _slider(
               title: 'Volume',
-              valueText: '${engine.volumeL.toStringAsFixed(2)} L',
-              value: engine.volumeL,
+              valueText:
+                  '${engine.targetVolumeL.toStringAsFixed(2).replaceAll('.', ',')} L',
+              value: engine.targetVolumeL,
               min: 1,
               max: 5,
               enabled: engine.volumeEditable,
@@ -484,45 +553,108 @@ class _PhetLabState extends State<PhetLab> {
     required ValueChanged<double> onChanged,
   }) {
     return Opacity(
-      opacity: enabled ? 1 : .5,
+      opacity: enabled ? 1 : .45,
       child: Column(
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(title, style: _label.copyWith(fontSize: 14)),
-              ),
+              Expanded(child: Text(title, style: _label)),
               Text(
                 valueText,
                 style: _label.copyWith(
-                  fontSize: 14,
-                  color: const Color(0xFFC7C0FF),
+                  color: PhysGameColors.accentText,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: PhysGameColors.purple2,
-              inactiveTrackColor: PhysGameColors.panelBorder,
-              thumbColor: Colors.white,
-              overlayColor: PhysGameColors.purple2.withOpacity(.2),
-            ),
-            child: Slider(
-              value: value.clamp(min, max).toDouble(),
-              min: min,
-              max: max,
-              onChanged: enabled
-                  ? (v) {
-                      onChanged(v);
-                      _changed();
-                    }
-                  : null,
-            ),
+          Slider(
+            value: value.clamp(min, max).toDouble(),
+            min: min,
+            max: max,
+            onChanged: enabled
+                ? (v) {
+                    onChanged(v);
+                    this.onChanged();
+                  }
+                : null,
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Laboratório completo em um único widget: palco à esquerda e painéis à
+/// direita (abaixo em telas estreitas). A tela principal monta as mesmas
+/// peças ([LabStageCard] e [LabPanels]) em um layout próprio.
+class PhetLab extends StatefulWidget {
+  final GasEngine engine;
+
+  /// Chamado sempre que algo muda e a tela precisa redesenhar.
+  final VoidCallback onChanged;
+
+  /// Chamado pelo botão laranja de reiniciar.
+  final VoidCallback onReset;
+
+  const PhetLab({
+    super.key,
+    required this.engine,
+    required this.onChanged,
+    required this.onReset,
+  });
+
+  @override
+  State<PhetLab> createState() => _PhetLabState();
+}
+
+class _PhetLabState extends State<PhetLab> {
+  final LabViewState view = LabViewState();
+
+  void _reset() {
+    widget.onReset();
+    view.resetTools();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 920;
+
+        final stage = LabStageCard(
+          engine: widget.engine,
+          view: view,
+          onChanged: widget.onChanged,
+          onReset: _reset,
+        );
+
+        final panels = LabPanels(
+          engine: widget.engine,
+          view: view,
+          onChanged: widget.onChanged,
+        );
+
+        if (wide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: stage),
+              const SizedBox(width: 16),
+              SizedBox(width: 320, child: panels),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            stage,
+            const SizedBox(height: 16),
+            panels,
+          ],
+        );
+      },
     );
   }
 }

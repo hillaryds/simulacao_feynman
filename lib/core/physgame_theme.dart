@@ -13,6 +13,26 @@ class PhysGameColors {
   static const success = Color(0xFF12B76A);
   static const danger = Color(0xFFF04438);
 
+  // ── Interface escura unificada ───────────────────────────────────────
+  /// Fundo da página.
+  static const bg = Color(0xFF080D1A);
+
+  /// Cartões e painéis.
+  static const surface = Color(0xFF111A2C);
+
+  /// Blocos internos dos cartões (leituras, campos, botões neutros).
+  static const surfaceHi = Color(0xFF1A2540);
+
+  /// Bordas e linhas divisórias.
+  static const line = Color(0xFF263350);
+
+  /// Texto principal e secundário sobre fundo escuro.
+  static const text = Color(0xFFE8ECF4);
+  static const muted = Color(0xFF94A1B8);
+
+  /// Roxo claro para títulos pequenos e valores em destaque.
+  static const accentText = Color(0xFFB4ABFF);
+
   static const lightParticle = Color(0xFF6D5EF6);
   static const heavyParticle = Color(0xFFF97316);
 
@@ -45,6 +65,66 @@ class PhysGameColors {
 }
 
 class PhysGameTheme {
+  /// Tema escuro: a página inteira segue a mesma linguagem do palco.
+  static ThemeData get dark {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: PhysGameColors.purple,
+      primary: PhysGameColors.purple2,
+      secondary: PhysGameColors.orange,
+      surface: PhysGameColors.surface,
+      onSurface: PhysGameColors.text,
+      brightness: Brightness.dark,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: PhysGameColors.bg,
+      dividerColor: PhysGameColors.line,
+      popupMenuTheme: const PopupMenuThemeData(
+        color: PhysGameColors.surfaceHi,
+        textStyle: TextStyle(color: PhysGameColors.text),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: PhysGameColors.surfaceHi,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: PhysGameColors.line),
+        ),
+        textStyle: const TextStyle(color: PhysGameColors.text, fontSize: 12),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: PhysGameColors.purple2,
+        inactiveTrackColor: PhysGameColors.line,
+        thumbColor: Colors.white,
+        overlayColor: PhysGameColors.purple2.withValues(alpha: .2),
+        trackHeight: 4,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: PhysGameColors.purple,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: PhysGameColors.surfaceHi,
+          disabledForegroundColor: PhysGameColors.muted,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: PhysGameColors.text,
+          side: const BorderSide(color: PhysGameColors.line),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(
       seedColor: PhysGameColors.purple,

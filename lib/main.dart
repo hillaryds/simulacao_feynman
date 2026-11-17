@@ -15,7 +15,7 @@ class PhysGameGasLabApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'PhysGame Lab',
-      theme: PhysGameTheme.light,
+      theme: PhysGameTheme.dark,
       home: const GasLabScreen(),
     );
   }

@@ -35,13 +35,13 @@ class _HistoryChartPainter extends CustomPainter {
         Offset(plot.left, y),
         Offset(plot.right, y),
         Paint()
-          ..color = PhysGameColors.border
+          ..color = PhysGameColors.line
           ..strokeWidth = 1,
       );
     }
 
     final axis = Paint()
-      ..color = PhysGameColors.slate
+      ..color = PhysGameColors.muted
       ..strokeWidth = 1.2;
 
     canvas.drawLine(
@@ -90,7 +90,7 @@ class _HistoryChartPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = PhysGameColors.purple
+        ..color = PhysGameColors.purple2
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round
@@ -103,7 +103,7 @@ class _HistoryChartPainter extends CustomPainter {
       'tempo',
       Offset(plot.center.dx - 16, size.height - 20),
     );
-    _label(canvas, maxP.toStringAsFixed(0), Offset(5, plot.top - 3));
+    _label(canvas, maxP.toStringAsFixed(0), Offset(5, plot.top + 10));
   }
 
   void _label(Canvas canvas, String text, Offset offset) {
@@ -111,7 +111,7 @@ class _HistoryChartPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: const TextStyle(
-          color: PhysGameColors.slate,
+          color: PhysGameColors.muted,
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
