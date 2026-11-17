@@ -4,6 +4,9 @@ import '../core/physgame_theme.dart';
 import '../simulation/gas_engine.dart';
 import '../simulation/gas_particle.dart';
 
+/// Histograma das velocidades das partículas (barras) comparado com a
+/// distribuição de Maxwell-Boltzmann prevista para a temperatura atual
+/// (curvas).
 class SpeedHistogram extends StatelessWidget {
   final GasEngine engine;
 
@@ -34,7 +37,7 @@ class _SpeedHistogramPainter extends CustomPainter {
       Offset(plot.left, plot.bottom),
       Offset(plot.right, plot.bottom),
       Paint()
-        ..color = PhysGameColors.slate
+        ..color = PhysGameColors.muted
         ..strokeWidth = 1.3,
     );
 
@@ -42,23 +45,22 @@ class _SpeedHistogramPainter extends CustomPainter {
       Offset(plot.left, plot.top),
       Offset(plot.left, plot.bottom),
       Paint()
-        ..color = PhysGameColors.slate
+        ..color = PhysGameColors.muted
         ..strokeWidth = 1.3,
     );
 
-    const bins = 12;
+    const bins = 16;
     final light = List<int>.filled(bins, 0);
     final heavy = List<int>.filled(bins, 0);
 
-    double maxSpeed = .1;
-    for (final p in engine.particles) {
-      maxSpeed = math.max(maxSpeed, p.velocity.distance);
-    }
+    // Escala fixa pela temperatura: o eixo não pula a cada quadro.
+    final maxSpeed =
+        math.max(0.05, 2.6 * engine.rmsSpeedFor(ParticleSpecies.light));
+    final binSpeed = maxSpeed / bins;
 
     for (final p in engine.particles) {
-      final idx = ((p.velocity.distance / maxSpeed) * (bins - 1))
-          .floor()
-          .clamp(0, bins - 1);
+      final idx =
+          (p.velocity.distance / binSpeed).floor().clamp(0, bins - 1);
 
       if (p.species == ParticleSpecies.light) {
         light[idx]++;
@@ -67,10 +69,28 @@ class _SpeedHistogramPainter extends CustomPainter {
       }
     }
 
-    int maxCount = 1;
+    // Contagem esperada por faixa segundo Maxwell-Boltzmann.
+    double expected(ParticleSpecies species, int count, double speed) =>
+        count * engine.speedDensity(speed, species) * binSpeed;
+
+    final lightCount = engine.lightCount;
+    final heavyCount = engine.heavyCount;
+
+    double maxCount = 1;
     for (final v in [...light, ...heavy]) {
-      maxCount = math.max(maxCount, v);
+      maxCount = math.max(maxCount, v.toDouble());
     }
+    for (int i = 0; i < bins; i++) {
+      final v = (i + 0.5) * binSpeed;
+      maxCount = math.max(
+        maxCount,
+        math.max(
+          expected(ParticleSpecies.light, lightCount, v),
+          expected(ParticleSpecies.heavy, heavyCount, v),
+        ),
+      );
+    }
+    maxCount *= 1.08;
 
     final binW = plot.width / bins;
     final barW = binW * .34;
@@ -91,7 +111,7 @@ class _SpeedHistogramPainter extends CustomPainter {
           ),
           const Radius.circular(3),
         ),
-        Paint()..color = PhysGameColors.lightParticle.withOpacity(.78),
+        Paint()..color = PhysGameColors.lightParticle.withValues(alpha: .75),
       );
 
       canvas.drawRRect(
@@ -104,15 +124,51 @@ class _SpeedHistogramPainter extends CustomPainter {
           ),
           const Radius.circular(3),
         ),
-        Paint()..color = PhysGameColors.heavyParticle.withOpacity(.78),
+        Paint()..color = PhysGameColors.heavyParticle.withValues(alpha: .6),
       );
     }
+
+    // Curvas teóricas.
+    void curve(ParticleSpecies species, int count, Color color) {
+      if (count == 0) return;
+
+      const samples = 80;
+      final path = Path();
+      for (int i = 0; i <= samples; i++) {
+        final v = maxSpeed * i / samples;
+        final y = plot.bottom -
+            plot.height * (expected(species, count, v) / maxCount);
+        final x = plot.left + plot.width * i / samples;
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+
+    curve(ParticleSpecies.light, lightCount, PhysGameColors.accentText);
+    curve(ParticleSpecies.heavy, heavyCount, const Color(0xFFFDBA74));
 
     _label(canvas, 'quantidade', const Offset(3, 2));
     _label(
       canvas,
       'velocidade →',
       Offset(plot.center.dx - 32, size.height - 20),
+    );
+    _label(
+      canvas,
+      'barras: medido   linhas: Maxwell-Boltzmann',
+      Offset(plot.right - 218, 2),
     );
   }
 
@@ -121,7 +177,7 @@ class _SpeedHistogramPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: const TextStyle(
-          color: PhysGameColors.slate,
+          color: PhysGameColors.muted,
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),

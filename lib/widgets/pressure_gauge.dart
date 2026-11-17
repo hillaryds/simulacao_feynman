@@ -38,6 +38,7 @@ class _PressureGaugePainter extends CustomPainter {
       center,
       radius,
       pressureKPa / gaugeMax(PressureUnit.kPa),
+      scale: gaugeScale(PressureUnit.kPa),
     );
   }
 
