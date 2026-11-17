@@ -27,16 +27,15 @@ class LabStageCard extends StatelessWidget {
   static const double _padding = 12;
 
   /// Proporção do cartão inteiro (palco + margem interna).
-  static const double aspectRatio =
-      (StageGeometry.width + 2 * _padding) /
-          (StageGeometry.height + 2 * _padding);
+  static const double aspectRatio = (StageGeometry.width + 2 * _padding) /
+      (StageGeometry.height + 2 * _padding);
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: aspectRatio,
       child: Container(
-        padding: const EdgeInsets.all(_padding),
+        padding: EdgeInsets.all(_padding),
         decoration: BoxDecoration(
           color: PhysGameColors.stage,
           borderRadius: BorderRadius.circular(20),
@@ -75,11 +74,11 @@ class LabPanels extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _particlesPanel(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _constantPanel(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _toolsPanel(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _finePanel(context),
       ],
     );
@@ -88,7 +87,7 @@ class LabPanels extends StatelessWidget {
   Widget _panel({required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: PhysGameColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -98,11 +97,11 @@ class LabPanels extends StatelessWidget {
     );
   }
 
-  static const TextStyle _label = TextStyle(
-    color: PhysGameColors.text,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle get _label => TextStyle(
+        color: PhysGameColors.text,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      );
 
   Widget _header(
     IconData icon,
@@ -113,11 +112,11 @@ class LabPanels extends StatelessWidget {
     final row = Row(
       children: [
         Icon(icon, size: 18, color: PhysGameColors.accentText),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: PhysGameColors.text,
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -142,7 +141,7 @@ class LabPanels extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: onToggle,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
+          padding: EdgeInsets.symmetric(vertical: 2),
           child: row,
         ),
       ),
@@ -165,14 +164,14 @@ class LabPanels extends StatelessWidget {
             },
           ),
           if (view.particlesPanelOpen) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             _speciesBlock(
               color: PhysGameColors.lightParticle,
               label: 'Leve',
               species: ParticleSpecies.light,
               count: engine.lightCount,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _speciesBlock(
               color: PhysGameColors.heavyParticle,
               label: 'Pesada',
@@ -212,17 +211,17 @@ class LabPanels extends StatelessWidget {
               height: 10,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(label, style: _label),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Row(
           children: [
             _stepButton('−5', 'Remover 5', () => remove(5)),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             _stepButton('−1', 'Remover 1', () => remove(1)),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Expanded(
               child: Container(
                 height: 34,
@@ -234,7 +233,7 @@ class LabPanels extends StatelessWidget {
                 ),
                 child: Text(
                   '$count',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: PhysGameColors.text,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -242,9 +241,9 @@ class LabPanels extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             _stepButton('+1', 'Adicionar 1', () => add(1)),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             _stepButton('+5', 'Adicionar 5', () => add(5)),
           ],
         ),
@@ -267,7 +266,7 @@ class LabPanels extends StatelessWidget {
             child: Center(
               child: Text(
                 text,
-                style: const TextStyle(
+                style: TextStyle(
                   color: PhysGameColors.text,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -293,7 +292,7 @@ class LabPanels extends StatelessWidget {
       final selected = engine.constantMode == mode;
 
       return Padding(
-        padding: const EdgeInsets.only(top: 6),
+        padding: EdgeInsets.only(top: 6),
         child: Opacity(
           opacity: enabled ? 1 : .4,
           child: Material(
@@ -310,14 +309,12 @@ class LabPanels extends StatelessWidget {
                     }
                   : null,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: selected
-                        ? PhysGameColors.purple2
-                        : PhysGameColors.line,
+                    color:
+                        selected ? PhysGameColors.purple2 : PhysGameColors.line,
                   ),
                 ),
                 child: Row(
@@ -339,7 +336,7 @@ class LabPanels extends StatelessWidget {
                               child: Container(
                                 width: 8,
                                 height: 8,
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   color: PhysGameColors.purple2,
                                   shape: BoxShape.circle,
                                 ),
@@ -347,7 +344,7 @@ class LabPanels extends StatelessWidget {
                             )
                           : null,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         text,
@@ -356,10 +353,10 @@ class LabPanels extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
                       hint,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: PhysGameColors.muted,
                         fontSize: 12,
                       ),
@@ -378,7 +375,7 @@ class LabPanels extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _header(Icons.lock_outline_rounded, 'Manter constante'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           radio('Nada', 'livre', ConstantMode.none),
           radio('Volume (V)', 'tampa fixa', ConstantMode.volume),
           radio(
@@ -416,7 +413,7 @@ class LabPanels extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: () => onChanged(!value),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 7),
+          padding: EdgeInsets.symmetric(vertical: 7),
           child: Row(
             children: [
               Container(
@@ -431,14 +428,14 @@ class LabPanels extends StatelessWidget {
                   ),
                 ),
                 child: value
-                    ? const Icon(
+                    ? Icon(
                         Icons.check_rounded,
                         size: 15,
                         color: PhysGameColors.navy,
                       )
                     : null,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   text,
@@ -457,7 +454,7 @@ class LabPanels extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _header(Icons.straighten_rounded, 'Ferramentas'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           check(
             text: 'Régua de volume',
             value: view.showRuler,
@@ -506,7 +503,7 @@ class LabPanels extends StatelessWidget {
             },
           ),
           if (view.finePanelOpen) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _slider(
               title: 'Volume',
               valueText:
@@ -640,7 +637,7 @@ class _PhetLabState extends State<PhetLab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: stage),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               SizedBox(width: 320, child: panels),
             ],
           );
@@ -650,7 +647,7 @@ class _PhetLabState extends State<PhetLab> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             stage,
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             panels,
           ],
         );

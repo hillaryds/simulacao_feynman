@@ -469,7 +469,8 @@ class GasEngine {
     // Pressão = impulso por tempo por comprimento de parede (média móvel).
     final perimeter = 2 * (chamberWidth + heightPerL * volumeL);
     final instant = impulse / (dt * perimeter);
-    _pressureSim += (instant - _pressureSim) * (1 - math.exp(-dt / _pressureTau));
+    _pressureSim +=
+        (instant - _pressureSim) * (1 - math.exp(-dt / _pressureTau));
 
     totalCollisions += collisions;
     _collisionsInWindow += collisions;
@@ -633,8 +634,10 @@ class GasEngine {
   }
 
   /// Menor volume em que as partículas ainda cabem.
-  double get _minVolumeL =>
-      math.max(1.0, _diskArea() / (maxPacking * areaPerL)).clamp(1.0, 5.0).toDouble();
+  double get _minVolumeL => math
+      .max(1.0, _diskArea() / (maxPacking * areaPerL))
+      .clamp(1.0, 5.0)
+      .toDouble();
 
   double _gaussian() {
     final u1 = math.max(_random.nextDouble(), 1e-12);

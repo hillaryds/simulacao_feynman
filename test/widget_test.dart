@@ -1,6 +1,8 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physgame_gas_lab/core/physgame_theme.dart';
 
 import 'package:physgame_gas_lab/main.dart';
 import 'package:physgame_gas_lab/simulation/gas_engine.dart';
@@ -65,8 +67,7 @@ void main() {
     expect(engine.workOnGasJ, greaterThan(0));
 
     // Primeira lei: todo o trabalho virou energia interna.
-    final initialEnergy =
-        engine.moles * GasEngine.gasConstant * 300.0;
+    final initialEnergy = engine.moles * GasEngine.gasConstant * 300.0;
     expect(
       engine.internalEnergyJ - initialEnergy,
       closeTo(engine.workOnGasJ, 1e-3),
@@ -198,6 +199,39 @@ void main() {
     await mouse.moveTo(onStage(const Offset(700, 30)));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Manômetro'), findsNothing);
+  });
+
+  testWidgets('o botão de tema alterna entre escuro e claro', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    addTearDown(() => PhysGameColors.lightMode.value = false);
+
+    await tester.pumpWidget(const PhysGameGasLabApp());
+    await tester.pump(const Duration(milliseconds: 50));
+
+    Color background() =>
+        tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor ??
+        Theme.of(tester.element(find.byType(Scaffold))).scaffoldBackgroundColor;
+
+    expect(background(), PhysGamePalette.dark.bg);
+
+    await tester.tap(find.byTooltip('Mudar para o tema claro'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(PhysGameColors.lightMode.value, isTrue);
+    expect(background(), PhysGamePalette.light.bg);
+
+    // Todas as abas continuam cabendo no tema claro.
+    for (final tab in ['Energia', 'Difusão', 'Missão', 'Exploração']) {
+      await tester.tap(find.text(tab));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    await tester.tap(find.byTooltip('Mudar para o tema escuro'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(background(), PhysGamePalette.dark.bg);
   });
 
   testWidgets('o app abre com as quatro abas', (tester) async {

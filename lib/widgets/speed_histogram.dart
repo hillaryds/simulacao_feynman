@@ -19,7 +19,7 @@ class SpeedHistogram extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _SpeedHistogramPainter(engine),
-      child: const SizedBox.expand(),
+      child: SizedBox.expand(),
     );
   }
 }
@@ -59,8 +59,7 @@ class _SpeedHistogramPainter extends CustomPainter {
     final binSpeed = maxSpeed / bins;
 
     for (final p in engine.particles) {
-      final idx =
-          (p.velocity.distance / binSpeed).floor().clamp(0, bins - 1);
+      final idx = (p.velocity.distance / binSpeed).floor().clamp(0, bins - 1);
 
       if (p.species == ParticleSpecies.light) {
         light[idx]++;
@@ -109,7 +108,7 @@ class _SpeedHistogramPainter extends CustomPainter {
             barW,
             lightH,
           ),
-          const Radius.circular(3),
+          Radius.circular(3),
         ),
         Paint()..color = PhysGameColors.lightParticle.withValues(alpha: .75),
       );
@@ -122,7 +121,7 @@ class _SpeedHistogramPainter extends CustomPainter {
             barW,
             heavyH,
           ),
-          const Radius.circular(3),
+          Radius.circular(3),
         ),
         Paint()..color = PhysGameColors.heavyParticle.withValues(alpha: .6),
       );
@@ -157,9 +156,9 @@ class _SpeedHistogramPainter extends CustomPainter {
     }
 
     curve(ParticleSpecies.light, lightCount, PhysGameColors.accentText);
-    curve(ParticleSpecies.heavy, heavyCount, const Color(0xFFFDBA74));
+    curve(ParticleSpecies.heavy, heavyCount, PhysGameColors.heavyAccent);
 
-    _label(canvas, 'quantidade', const Offset(3, 2));
+    _label(canvas, 'quantidade', Offset(3, 2));
     _label(
       canvas,
       'velocidade →',
@@ -176,7 +175,7 @@ class _SpeedHistogramPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(
+        style: TextStyle(
           color: PhysGameColors.muted,
           fontSize: 10,
           fontWeight: FontWeight.w600,

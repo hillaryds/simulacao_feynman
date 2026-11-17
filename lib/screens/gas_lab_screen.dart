@@ -42,9 +42,9 @@ class _GasLabScreenState extends State<GasLabScreen>
   double? pHeated;
 
   // Tons usados nos avisos sobre fundo escuro.
-  static const Color _okText = Color(0xFF6CE9A6);
-  static const Color _warnText = Color(0xFFFDBA74);
-  static const Color _badText = Color(0xFFFDA29B);
+  Color get _okText => PhysGameColors.okText;
+  Color get _warnText => PhysGameColors.warnText;
+  Color get _badText => PhysGameColors.badText;
 
   @override
   void initState() {
@@ -52,7 +52,7 @@ class _GasLabScreenState extends State<GasLabScreen>
 
     ticker = AnimationController(
       vsync: this,
-      duration: const Duration(days: 1),
+      duration: Duration(days: 1),
     )
       ..addListener(_tick)
       ..repeat();
@@ -144,7 +144,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: _header(width),
                 ),
                 Expanded(child: body),
@@ -160,7 +160,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   /// A câmara sempre cabe inteira na altura da janela.
   Widget _wideBody() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -171,14 +171,14 @@ class _GasLabScreenState extends State<GasLabScreen>
               _analysisPanel(),
             ]),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Align(
               alignment: Alignment.topCenter,
               child: _stage(),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           SizedBox(
             width: 320,
             child: _scrollColumn([_controls()]),
@@ -191,7 +191,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   /// Tela média: câmara e análise à esquerda, controles à direita.
   Widget _mediumBody(double height) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -205,7 +205,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               _analysisPanel(),
             ]),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           SizedBox(
             width: 300,
             child: _scrollColumn([_controls()]),
@@ -218,7 +218,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   /// Tela estreita (celular): tudo em uma coluna.
   Widget _narrowBody(double height) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: 12),
       child: _scrollColumn([
         // Missão: as etapas ficam acima do laboratório.
         if (section == LabSection.mission) _rightPanel(),
@@ -234,12 +234,12 @@ class _GasLabScreenState extends State<GasLabScreen>
 
   Widget _scrollColumn(List<Widget> children) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (int i = 0; i < children.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
+            if (i > 0) SizedBox(height: 12),
             children[i],
           ],
         ],
@@ -289,7 +289,7 @@ class _GasLabScreenState extends State<GasLabScreen>
         Container(
           width: 38,
           height: 38,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -297,14 +297,14 @@ class _GasLabScreenState extends State<GasLabScreen>
               colors: [PhysGameColors.purple2, PhysGameColors.purple],
             ),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.play_arrow_rounded,
             color: Colors.white,
             size: 24,
           ),
         ),
-        const SizedBox(width: 10),
-        const Flexible(
+        SizedBox(width: 10),
+        Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -340,19 +340,49 @@ class _GasLabScreenState extends State<GasLabScreen>
       children: [
         if (section == LabSection.mission) ...[
           _xpBadge(),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
         ],
+        Tooltip(
+          message: PhysGameColors.lightMode.value
+              ? 'Mudar para o tema escuro'
+              : 'Mudar para o tema claro',
+          child: Material(
+            color: PhysGameColors.surface,
+            shape: CircleBorder(
+              side: BorderSide(color: PhysGameColors.line),
+            ),
+            child: InkWell(
+              customBorder: CircleBorder(),
+              onTap: () {
+                PhysGameColors.lightMode.value =
+                    !PhysGameColors.lightMode.value;
+              },
+              child: SizedBox(
+                width: 38,
+                height: 38,
+                child: Icon(
+                  PhysGameColors.lightMode.value
+                      ? Icons.dark_mode_rounded
+                      : Icons.light_mode_rounded,
+                  size: 20,
+                  color: PhysGameColors.text,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
         Tooltip(
           message: 'Reiniciar',
           child: Material(
             color: PhysGameColors.surface,
-            shape: const CircleBorder(
+            shape: CircleBorder(
               side: BorderSide(color: PhysGameColors.line),
             ),
             child: InkWell(
-              customBorder: const CircleBorder(),
+              customBorder: CircleBorder(),
               onTap: _resetCurrent,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 38,
                 height: 38,
                 child: Icon(
@@ -371,17 +401,17 @@ class _GasLabScreenState extends State<GasLabScreen>
       return Row(
         children: [
           brand,
-          const SizedBox(width: 24),
+          SizedBox(width: 24),
           Expanded(
             child: Align(
               alignment: Alignment.center,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
+                constraints: BoxConstraints(maxWidth: 620),
                 child: _sectionTabs(showIcons: true),
               ),
             ),
           ),
-          const SizedBox(width: 24),
+          SizedBox(width: 24),
           actions,
         ],
       );
@@ -395,11 +425,11 @@ class _GasLabScreenState extends State<GasLabScreen>
             Expanded(
               child: Align(alignment: Alignment.centerLeft, child: brand),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             actions,
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         _sectionTabs(showIcons: width >= 480),
       ],
     );
@@ -407,7 +437,7 @@ class _GasLabScreenState extends State<GasLabScreen>
 
   Widget _sectionTabs({required bool showIcons}) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: PhysGameColors.surface,
         borderRadius: BorderRadius.circular(14),
@@ -435,8 +465,8 @@ class _GasLabScreenState extends State<GasLabScreen>
         borderRadius: BorderRadius.circular(10),
         onTap: () => _switchSection(value),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
+          duration: Duration(milliseconds: 180),
+          padding: EdgeInsets.symmetric(vertical: 9, horizontal: 6),
           decoration: BoxDecoration(
             color: active ? PhysGameColors.purple : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
@@ -446,7 +476,7 @@ class _GasLabScreenState extends State<GasLabScreen>
             children: [
               if (showIcon) ...[
                 Icon(icon, size: 17, color: color),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
               ],
               Flexible(
                 child: Text(
@@ -470,7 +500,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   Widget _rightPanel() {
     switch (section) {
       case LabSection.explore:
-        return const SizedBox.shrink();
+        return SizedBox.shrink();
       case LabSection.energy:
         return _energyPanel();
       case LabSection.diffusion:
@@ -486,8 +516,8 @@ class _GasLabScreenState extends State<GasLabScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _cardTitle(Icons.bolt_rounded, _sectionTitle),
-          const SizedBox(height: 6),
-          const Text(
+          SizedBox(height: 6),
+          Text(
             'Partículas leves atingem velocidades maiores que as pesadas na mesma temperatura. '
             'As barras são as velocidades medidas agora e as linhas são a previsão de Maxwell-Boltzmann.',
             style: TextStyle(
@@ -496,17 +526,17 @@ class _GasLabScreenState extends State<GasLabScreen>
               fontSize: 13,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Container(
             height: 210,
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: PhysGameColors.bg,
               borderRadius: BorderRadius.circular(12),
             ),
             child: SpeedHistogram(engine: engine),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -516,7 +546,7 @@ class _GasLabScreenState extends State<GasLabScreen>
                   engine.averageSpeedFor(ParticleSpecies.light),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: _legendMetric(
                   PhysGameColors.heavyParticle,
@@ -526,9 +556,9 @@ class _GasLabScreenState extends State<GasLabScreen>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _thermalControls(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _infoBox(
             'Trabalho P·V',
             'Trabalho acumulado sobre o gás: '
@@ -548,8 +578,8 @@ class _GasLabScreenState extends State<GasLabScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _cardTitle(Icons.swap_horiz_rounded, _sectionTitle),
-          const SizedBox(height: 6),
-          const Text(
+          SizedBox(height: 6),
+          Text(
             'As espécies começam separadas. Abra a divisória e observe a mistura ao longo do tempo.',
             style: TextStyle(
               color: PhysGameColors.muted,
@@ -557,7 +587,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               fontSize: 13,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           FilledButton.icon(
             onPressed: () {
               setState(engine.toggleBarrier);
@@ -569,14 +599,14 @@ class _GasLabScreenState extends State<GasLabScreen>
               engine.barrierOpen ? 'Fechar divisória' : 'Abrir divisória',
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _infoBox(
             'Configuração',
             'Lado esquerdo: partículas leves\n'
                 'Lado direito: partículas pesadas\n'
                 'T = ${engine.temperatureK.toStringAsFixed(0)} K',
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           _slider(
             title: 'Temperatura',
             value: engine.temperatureK.clamp(200.0, 600.0).toDouble(),
@@ -588,13 +618,13 @@ class _GasLabScreenState extends State<GasLabScreen>
             enabled: true,
             onChanged: engine.setTemperature,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () {
               setState(engine.resetDiffusion);
             },
-            icon: const Icon(Icons.restart_alt_rounded),
-            label: const Text('Reiniciar difusão'),
+            icon: Icon(Icons.restart_alt_rounded),
+            label: Text('Reiniciar difusão'),
           ),
         ],
       ),
@@ -617,7 +647,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               _xpBadge(),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           LinearProgressIndicator(
             value: missionDone ? 1 : missionStep / 5,
             minHeight: 6,
@@ -625,9 +655,9 @@ class _GasLabScreenState extends State<GasLabScreen>
             color: PhysGameColors.purple2,
             backgroundColor: PhysGameColors.line,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: Duration(milliseconds: 200),
             child: _missionContent(),
           ),
         ],
@@ -638,11 +668,11 @@ class _GasLabScreenState extends State<GasLabScreen>
   Widget _missionContent() {
     if (missionDone) {
       return Column(
-        key: const ValueKey('done'),
+        key: ValueKey('done'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: PhysGameColors.success.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(14),
@@ -650,7 +680,7 @@ class _GasLabScreenState extends State<GasLabScreen>
                 color: PhysGameColors.success.withValues(alpha: .5),
               ),
             ),
-            child: const Column(
+            child: Column(
               children: [
                 Icon(
                   Icons.emoji_events_rounded,
@@ -675,7 +705,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _infoBox(
             'Resultado',
             'P inicial: ${pInitial == null ? '-' : _n(pInitial!, 1)} kPa\n'
@@ -683,11 +713,11 @@ class _GasLabScreenState extends State<GasLabScreen>
                 'P após aquecimento: ${pHeated == null ? '-' : _n(pHeated!, 1)} kPa\n\n'
                 'XP obtido: $xp',
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           FilledButton.icon(
             onPressed: _resetCurrent,
-            icon: const Icon(Icons.replay_rounded),
-            label: const Text('Refazer missão'),
+            icon: Icon(Icons.replay_rounded),
+            label: Text('Refazer missão'),
           ),
         ],
       );
@@ -696,24 +726,24 @@ class _GasLabScreenState extends State<GasLabScreen>
     switch (missionStep) {
       case 0:
         return Column(
-          key: const ValueKey('m0'),
+          key: ValueKey('m0'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _stepEyebrow('OBJETIVO'),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Você vai alterar uma variável por vez e observar a resposta do sistema.',
               style: TextStyle(
                 color: PhysGameColors.muted,
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _infoBox(
               'Condição inicial',
               'V = 4,00 L\nT = 300 K\n${GasEngine.defaultCount} partículas',
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             FilledButton.icon(
               onPressed: () {
                 setState(() {
@@ -721,8 +751,8 @@ class _GasLabScreenState extends State<GasLabScreen>
                   missionStep = 1;
                 });
               },
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Começar'),
+              icon: Icon(Icons.play_arrow_rounded),
+              label: Text('Começar'),
             ),
           ],
         );
@@ -806,12 +836,12 @@ class _GasLabScreenState extends State<GasLabScreen>
 
       case 4:
         return Column(
-          key: const ValueKey('m4'),
+          key: ValueKey('m4'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _stepEyebrow('ETAPA 4 DE 4'),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Interprete os resultados',
               style: TextStyle(
                 fontSize: 17,
@@ -819,15 +849,15 @@ class _GasLabScreenState extends State<GasLabScreen>
                 color: PhysGameColors.text,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Qual alternativa descreve melhor o que você observou?',
               style: TextStyle(
                 color: PhysGameColors.muted,
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _answerOption(
               0,
               'Diminuir o volume e aumentar a temperatura elevaram a pressão.',
@@ -841,7 +871,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               'A temperatura não teve efeito sobre a pressão.',
             ),
             if (answerLocked && answer != 0) ...[
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               OutlinedButton.icon(
                 onPressed: () {
                   setState(() {
@@ -849,22 +879,22 @@ class _GasLabScreenState extends State<GasLabScreen>
                     answer = null;
                   });
                 },
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Tentar novamente'),
+                icon: Icon(Icons.refresh_rounded),
+                label: Text('Tentar novamente'),
               ),
             ],
           ],
         );
 
       default:
-        return const SizedBox.shrink();
+        return SizedBox.shrink();
     }
   }
 
   Widget _stepEyebrow(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         color: PhysGameColors.accentText,
         fontSize: 11,
         letterSpacing: .8,
@@ -888,32 +918,32 @@ class _GasLabScreenState extends State<GasLabScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _stepEyebrow('ETAPA $number DE 4'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w900,
             color: PhysGameColors.text,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           description,
-          style: const TextStyle(
+          style: TextStyle(
             color: PhysGameColors.muted,
             height: 1.4,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _statusBox(
           ready: ready,
           text: ready ? readyText : pendingText,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         FilledButton.icon(
           onPressed: onPressed,
-          icon: const Icon(Icons.check_circle_outline_rounded),
+          icon: Icon(Icons.check_circle_outline_rounded),
           label: Text(buttonText),
         ),
       ],
@@ -927,7 +957,7 @@ class _GasLabScreenState extends State<GasLabScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _cardTitle(Icons.insights_rounded, 'Análise em tempo real'),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 640;
@@ -941,7 +971,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               final chart = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
+                  Text(
                     'Histórico de pressão',
                     style: TextStyle(
                       color: PhysGameColors.accentText,
@@ -949,10 +979,10 @@ class _GasLabScreenState extends State<GasLabScreen>
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Container(
                     height: 170,
-                    padding: const EdgeInsets.all(6),
+                    padding: EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: PhysGameColors.bg,
                       borderRadius: BorderRadius.circular(12),
@@ -969,9 +999,9 @@ class _GasLabScreenState extends State<GasLabScreen>
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     gauge,
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(child: _readings()),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16),
                     Expanded(child: chart),
                   ],
                 );
@@ -981,9 +1011,9 @@ class _GasLabScreenState extends State<GasLabScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Center(child: gauge),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _readings(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   chart,
                 ],
               );
@@ -1015,11 +1045,11 @@ class _GasLabScreenState extends State<GasLabScreen>
     return Column(
       children: [
         for (int i = 0; i < tiles.length; i += 2) ...[
-          if (i > 0) const SizedBox(height: 8),
+          if (i > 0) SizedBox(height: 8),
           Row(
             children: [
               Expanded(child: tiles[i]),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(child: tiles[i + 1]),
             ],
           ),
@@ -1030,7 +1060,7 @@ class _GasLabScreenState extends State<GasLabScreen>
 
   Widget _metricTile(String label, String value, {bool highlight = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: PhysGameColors.surfaceHi,
         borderRadius: BorderRadius.circular(10),
@@ -1045,13 +1075,13 @@ class _GasLabScreenState extends State<GasLabScreen>
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: PhysGameColors.muted,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 3),
+          SizedBox(height: 3),
           Text(
             value,
             maxLines: 1,
@@ -1077,24 +1107,24 @@ class _GasLabScreenState extends State<GasLabScreen>
             onPressed: engine.constantMode == ConstantMode.temperature
                 ? null
                 : () => setState(() => engine.cool(25)),
-            icon: const Icon(
+            icon: Icon(
               Icons.ac_unit_rounded,
               color: PhysGameColors.coolColor,
             ),
-            label: const Text('Resfriar'),
+            label: Text('Resfriar'),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: OutlinedButton.icon(
             onPressed: engine.constantMode == ConstantMode.temperature
                 ? null
                 : () => setState(() => engine.heat(25)),
-            icon: const Icon(
+            icon: Icon(
               Icons.local_fire_department_rounded,
               color: PhysGameColors.orange,
             ),
-            label: const Text('Aquecer'),
+            label: Text('Aquecer'),
           ),
         ),
       ],
@@ -1119,11 +1149,11 @@ class _GasLabScreenState extends State<GasLabScreen>
           Row(
             children: [
               Icon(icon, size: 18, color: PhysGameColors.accentText),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: PhysGameColors.text,
                   ),
@@ -1131,7 +1161,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               ),
               Text(
                 valueText,
-                style: const TextStyle(
+                style: TextStyle(
                   color: PhysGameColors.accentText,
                   fontWeight: FontWeight.w900,
                 ),
@@ -1156,7 +1186,7 @@ class _GasLabScreenState extends State<GasLabScreen>
 
   Widget _legendMetric(Color color, String label, double speed) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .14),
         borderRadius: BorderRadius.circular(12),
@@ -1171,21 +1201,21 @@ class _GasLabScreenState extends State<GasLabScreen>
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: PhysGameColors.text,
                   ),
                 ),
                 Text(
                   'v média visual: ${_n(speed, 3)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: PhysGameColors.muted,
                     fontSize: 11,
                   ),
@@ -1219,7 +1249,7 @@ class _GasLabScreenState extends State<GasLabScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: answerLocked
@@ -1236,7 +1266,7 @@ class _GasLabScreenState extends State<GasLabScreen>
                 });
               },
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(12),
@@ -1256,7 +1286,7 @@ class _GasLabScreenState extends State<GasLabScreen>
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   label,
@@ -1280,7 +1310,7 @@ class _GasLabScreenState extends State<GasLabScreen>
     final color = ready ? PhysGameColors.success : PhysGameColors.orange;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .13),
         borderRadius: BorderRadius.circular(12),
@@ -1292,7 +1322,7 @@ class _GasLabScreenState extends State<GasLabScreen>
             color: color,
             size: 20,
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
@@ -1309,7 +1339,7 @@ class _GasLabScreenState extends State<GasLabScreen>
 
   Widget _xpBadge() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: PhysGameColors.amber.withValues(alpha: .16),
         borderRadius: BorderRadius.circular(99),
@@ -1317,16 +1347,16 @@ class _GasLabScreenState extends State<GasLabScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.stars_rounded,
             size: 17,
             color: PhysGameColors.amber,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             '$xp XP',
-            style: const TextStyle(
-              color: Color(0xFFFCD34D),
+            style: TextStyle(
+              color: PhysGameColors.xpText,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1338,7 +1368,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   Widget _infoBox(String title, String text) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: PhysGameColors.surfaceHi,
         borderRadius: BorderRadius.circular(12),
@@ -1348,16 +1378,16 @@ class _GasLabScreenState extends State<GasLabScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: PhysGameColors.accentText,
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: 5),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               color: PhysGameColors.muted,
               height: 1.4,
               fontSize: 13,
@@ -1372,11 +1402,11 @@ class _GasLabScreenState extends State<GasLabScreen>
     return Row(
       children: [
         Icon(icon, size: 18, color: PhysGameColors.accentText),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: PhysGameColors.text,
@@ -1389,7 +1419,7 @@ class _GasLabScreenState extends State<GasLabScreen>
 
   Widget _card({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: PhysGameColors.surface,
         borderRadius: BorderRadius.circular(16),

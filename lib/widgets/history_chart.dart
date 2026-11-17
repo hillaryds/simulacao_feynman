@@ -15,7 +15,7 @@ class HistoryChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _HistoryChartPainter(samples),
-      child: const SizedBox.expand(),
+      child: SizedBox.expand(),
     );
   }
 }
@@ -97,7 +97,7 @@ class _HistoryChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    _label(canvas, 'P (kPa)', const Offset(4, 2));
+    _label(canvas, 'P (kPa)', Offset(4, 2));
     _label(
       canvas,
       'tempo',
@@ -110,7 +110,7 @@ class _HistoryChartPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(
+        style: TextStyle(
           color: PhysGameColors.muted,
           fontSize: 10,
           fontWeight: FontWeight.w600,

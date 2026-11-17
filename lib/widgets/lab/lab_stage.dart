@@ -265,7 +265,7 @@ class _LabStageState extends State<LabStage> {
 
     _setHint(hint);
     _hintTimer?.cancel();
-    _hintTimer = Timer(const Duration(seconds: 4), () {
+    _hintTimer = Timer(Duration(seconds: 4), () {
       if (mounted && !_hovering && _drag == _Drag.none) _setHint(null);
     });
   }
@@ -333,7 +333,7 @@ class _LabStageState extends State<LabStage> {
     // No toque não há "sair com o mouse": a dica some pouco depois de soltar.
     if (!_hovering && _hint != null) {
       _hintTimer?.cancel();
-      _hintTimer = Timer(const Duration(seconds: 2), () {
+      _hintTimer = Timer(Duration(seconds: 2), () {
         if (mounted && !_hovering && _drag == _Drag.none) _setHint(null);
       });
     }
@@ -408,8 +408,7 @@ class _LabStageState extends State<LabStage> {
     String Function(T) label,
     ValueChanged<T> onPick,
   ) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
     final picked = await showMenu<T>(
       context: context,
@@ -445,16 +444,17 @@ class _LabStageState extends State<LabStage> {
     return Positioned(
       left: left,
       width: _bubbleWidth,
-      top: above ? null : math.min(rect.bottom + 10, StageGeometry.height - 120),
+      top:
+          above ? null : math.min(rect.bottom + 10, StageGeometry.height - 120),
       bottom: above ? StageGeometry.height - rect.top + 10 : null,
       child: IgnorePointer(
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+          padding: EdgeInsets.fromLTRB(12, 10, 12, 11),
           decoration: BoxDecoration(
             color: PhysGameColors.surfaceHi,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: PhysGameColors.purple2, width: 1.5),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
                 color: Color(0x99000000),
                 blurRadius: 16,
@@ -468,16 +468,16 @@ class _LabStageState extends State<LabStage> {
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.lightbulb_rounded,
                     size: 15,
                     color: PhysGameColors.amber,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       _hintTitle(hint),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: PhysGameColors.text,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -486,10 +486,10 @@ class _LabStageState extends State<LabStage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
+              SizedBox(height: 5),
               Text(
                 _hintText(hint),
-                style: const TextStyle(
+                style: TextStyle(
                   color: PhysGameColors.muted,
                   fontSize: 12,
                   height: 1.35,
@@ -536,8 +536,7 @@ class _LabStageState extends State<LabStage> {
                     onTapUp: _onTapUp,
                     child: CustomPaint(
                       painter: LabStagePainter(engine, view),
-                      size:
-                          const Size(StageGeometry.width, StageGeometry.height),
+                      size: Size(StageGeometry.width, StageGeometry.height),
                     ),
                   ),
                 ),
