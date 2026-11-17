@@ -7,7 +7,7 @@ import '../../core/physgame_theme.dart';
 import '../../simulation/gas_engine.dart';
 import '../../simulation/gas_particle.dart';
 
-enum PressureUnit { kPa, atm, mmHg }
+enum PressureUnit { kPa, atm, mmHg, kgfCm2, bar, psi }
 
 enum TemperatureUnit { kelvin, celsius, fahrenheit }
 
@@ -37,8 +37,7 @@ class LabViewState {
   int _collisionBase = 0;
 
   double stopwatchSeconds(GasEngine e) =>
-      _swAccum +
-      (stopwatchRunning ? math.max(0.0, e.simTime - _swMark) : 0.0);
+      _swAccum + (stopwatchRunning ? math.max(0.0, e.simTime - _swMark) : 0.0);
 
   void toggleStopwatch(GasEngine e) {
     if (stopwatchRunning) {
@@ -55,7 +54,8 @@ class LabViewState {
     _swMark = e.simTime;
   }
 
-  int collisions(GasEngine e) => math.max(0, e.totalCollisions - _collisionBase);
+  int collisions(GasEngine e) =>
+      math.max(0, e.totalCollisions - _collisionBase);
 
   void resetCollisions(GasEngine e) => _collisionBase = e.totalCollisions;
 
@@ -101,20 +101,62 @@ double pressureInUnit(GasEngine e, PressureUnit u) {
       return e.pressureAtm;
     case PressureUnit.mmHg:
       return e.pressureMmHg;
+    case PressureUnit.kgfCm2:
+      // 1 kgf/cm² = 98066,5 Pa
+      return e.pressurePa / 98066.5;
+    case PressureUnit.bar:
+      return e.pressurePa / 100000.0;
+    case PressureUnit.psi:
+      return e.pressurePa / 6894.757;
   }
 }
 
-/// Fundo de escala do manômetro em cada unidade (≈ 350 kPa).
-double gaugeMax(PressureUnit u) {
+/// Escala graduada do manômetro em uma unidade: fundo de escala, número de
+/// divisões maiores, subdivisões e quais divisões recebem número.
+class GaugeScale {
+  final double max;
+  final int majors;
+  final int minorsPerMajor;
+  final int labelEvery;
+  final String unit;
+
+  GaugeScale({
+    required this.max,
+    required this.majors,
+    required this.minorsPerMajor,
+    required this.labelEvery,
+    required this.unit,
+  });
+
+  /// Valor da menor divisão da escala.
+  double get smallestDivision => max / (majors * minorsPerMajor);
+}
+
+GaugeScale gaugeScale(PressureUnit u) {
   switch (u) {
     case PressureUnit.kPa:
-      return 350;
+      return GaugeScale(
+          max: 400, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'kPa');
     case PressureUnit.atm:
-      return 3.5;
+      return GaugeScale(
+          max: 4, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'atm');
     case PressureUnit.mmHg:
-      return 2800;
+      return GaugeScale(
+          max: 3000, majors: 6, minorsPerMajor: 5, labelEvery: 2, unit: 'mmHg');
+    case PressureUnit.kgfCm2:
+      return GaugeScale(
+          max: 4, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'kgf/cm²');
+    case PressureUnit.bar:
+      return GaugeScale(
+          max: 4, majors: 8, minorsPerMajor: 5, labelEvery: 2, unit: 'bar');
+    case PressureUnit.psi:
+      return GaugeScale(
+          max: 60, majors: 6, minorsPerMajor: 5, labelEvery: 1, unit: 'psi');
   }
 }
+
+/// Fundo de escala do manômetro em cada unidade.
+double gaugeMax(PressureUnit u) => gaugeScale(u).max;
 
 String pressureUnitLabel(PressureUnit u) {
   switch (u) {
@@ -124,12 +166,32 @@ String pressureUnitLabel(PressureUnit u) {
       return 'atm';
     case PressureUnit.mmHg:
       return 'mmHg';
+    case PressureUnit.kgfCm2:
+      return 'kgf/cm²';
+    case PressureUnit.bar:
+      return 'bar';
+    case PressureUnit.psi:
+      return 'psi';
   }
 }
 
 String formatPressure(GasEngine e, PressureUnit u) {
   final v = pressureInUnit(e, u);
-  final digits = u == PressureUnit.kPa ? 1 : (u == PressureUnit.atm ? 2 : 0);
+  final int digits;
+  switch (u) {
+    case PressureUnit.kPa:
+    case PressureUnit.psi:
+      digits = 1;
+      break;
+    case PressureUnit.mmHg:
+      digits = 0;
+      break;
+    case PressureUnit.atm:
+    case PressureUnit.kgfCm2:
+    case PressureUnit.bar:
+      digits = 2;
+      break;
+  }
   return '${_comma(v, digits)} ${pressureUnitLabel(u)}';
 }
 
@@ -190,8 +252,8 @@ class StageGeometry {
   // Bomba
   static const double pumpTravel = 40;
   static const double pumpHandleRestY = 372;
-  static Rect pumpHandleHit(double offset) =>
-      Rect.fromLTRB(588, pumpHandleRestY - 6 + offset, 684, pumpHandleRestY + 22 + offset);
+  static Rect pumpHandleHit(double offset) => Rect.fromLTRB(
+      588, pumpHandleRestY - 6 + offset, 684, pumpHandleRestY + 22 + offset);
 
   // Aquecedor / resfriador (balde)
   static const Rect bucket = Rect.fromLTRB(165, 510, 305, 592);
@@ -313,6 +375,7 @@ void _drawDropArrow(Canvas canvas, Offset topLeft) {
 // ─────────────────────────────────────────────────────────────────────────
 // Manômetro estilo PhET (também usado no painel "Análise em tempo real").
 // [fraction] vai de 0 a 1 ao longo de 240° (de 150° a 390°).
+// A escala é numerada e mostra a unidade, como em um manômetro real.
 // ─────────────────────────────────────────────────────────────────────────
 void paintPhetGauge(
   Canvas canvas,
@@ -320,8 +383,10 @@ void paintPhetGauge(
   double outerRadius,
   double fraction, {
   String label = 'Pressão',
+  GaugeScale? scale,
 }) {
   final s = outerRadius / 70.0;
+  final sc = scale ?? gaugeScale(PressureUnit.kPa);
 
   // Aro metálico
   canvas.drawCircle(
@@ -331,38 +396,70 @@ void paintPhetGauge(
       ..shader = ui.Gradient.radial(
         center.translate(0, -outerRadius * 0.2),
         outerRadius * 1.1,
-        const [Color(0xFFE4E7EC), PhysGameColors.metalEdge],
+        [Color(0xFFE4E7EC), PhysGameColors.metalEdge],
       ),
   );
-  canvas.drawCircle(center, outerRadius, _stroke(const Color(0xFF475467), 1.5 * s));
+  canvas.drawCircle(center, outerRadius, _stroke(Color(0xFF475467), 1.5 * s));
 
   // Mostrador
-  canvas.drawCircle(center, 62 * s, _fill(const Color(0xFFF9FAFB)));
+  canvas.drawCircle(center, 62 * s, _fill(Color(0xFFF9FAFB)));
   canvas.drawCircle(center, 62 * s, _stroke(PhysGameColors.metalDark, 1.5 * s));
 
-  // Marcas (25 → uma maior a cada 4)
-  for (int i = 0; i <= 24; i++) {
-    final a = (150 + 240 * (i / 24)) * math.pi / 180;
-    final major = i % 4 == 0;
-    final r1 = (major ? 44 : 50) * s;
-    final r2 = 58 * s;
+  // Escala graduada: divisões menores, maiores e números.
+  final total = sc.majors * sc.minorsPerMajor;
+  for (int i = 0; i <= total; i++) {
+    final a = (150 + 240 * (i / total)) * math.pi / 180;
+    final major = i % sc.minorsPerMajor == 0;
+    final r1 = (major ? 49 : 53) * s;
+    final r2 = 59 * s;
     canvas.drawLine(
       Offset(center.dx + math.cos(a) * r1, center.dy + math.sin(a) * r1),
       Offset(center.dx + math.cos(a) * r2, center.dy + math.sin(a) * r2),
       _stroke(
         PhysGameColors.navy,
-        (major ? 2.6 : 1.4) * s,
+        (major ? 2.2 : 1.0) * s,
         cap: StrokeCap.round,
       ),
     );
+
+    final majorIndex = i ~/ sc.minorsPerMajor;
+    if (major && majorIndex % sc.labelEvery == 0) {
+      final value = sc.max * majorIndex / sc.majors;
+      final text = value == value.roundToDouble()
+          ? value.round().toString()
+          : _comma(value, 1);
+      _drawText(
+        canvas,
+        text,
+        Offset(
+          center.dx + math.cos(a) * 38 * s,
+          center.dy + math.sin(a) * 38 * s,
+        ),
+        size: 9.5 * s,
+        color: PhysGameColors.navy,
+        weight: FontWeight.w700,
+        align: TextAlign.center,
+      );
+    }
   }
 
   _drawText(
     canvas,
     label,
-    center.translate(0, -15 * s),
-    size: 15 * s,
-    color: PhysGameColors.navy,
+    center.translate(0, -16 * s),
+    size: 10 * s,
+    color: PhysGameColors.slate,
+    align: TextAlign.center,
+  );
+
+  // Unidade no vão inferior da escala.
+  _drawText(
+    canvas,
+    sc.unit,
+    center.translate(0, 38 * s),
+    size: 11 * s,
+    color: PhysGameColors.purple,
+    weight: FontWeight.w800,
     align: TextAlign.center,
   );
 
@@ -370,14 +467,14 @@ void paintPhetGauge(
   final f = fraction.clamp(0.0, 1.0);
   final angle = (150 + 240 * f) * math.pi / 180;
   final tip = Offset(
-    center.dx + math.cos(angle) * 46 * s,
-    center.dy + math.sin(angle) * 46 * s,
+    center.dx + math.cos(angle) * 54 * s,
+    center.dy + math.sin(angle) * 54 * s,
   );
 
   canvas.drawLine(
     center,
     tip,
-    _stroke(PhysGameColors.mercury, 4 * s, cap: StrokeCap.round),
+    _stroke(PhysGameColors.mercury, 3 * s, cap: StrokeCap.round),
   );
   canvas.drawCircle(center, 6 * s, _fill(PhysGameColors.navy));
   canvas.drawCircle(center, 2.5 * s, _fill(PhysGameColors.mercury));
@@ -421,23 +518,25 @@ class LabStagePainter extends CustomPainter {
     // Cilindro acima da tampa (esmaecido).
     canvas.drawRect(
       Rect.fromLTRB(_l, _t, _r, lid),
-      _stroke(Colors.white.withOpacity(.22), 3),
+      _stroke(PhysGameColors.ghost, 3),
     );
 
     // Escala de volume (à esquerda).
     for (int i = 1; i <= 5; i++) {
-      final y = _t + (0.69 - ((i - 1) / 4.0) * 0.56) * StageGeometry.chamberH;
+      final y = _t +
+          (GasEngine.wallBottom - GasEngine.heightPerL * i) *
+              StageGeometry.chamberH;
       canvas.drawLine(
         Offset(44, y),
         Offset(54, y),
-        _stroke(PhysGameColors.metalDark, 1.5),
+        _stroke(PhysGameColors.muted, 1.5),
       );
       _drawText(
         canvas,
         '$i L',
         Offset(40, y),
         size: 11,
-        color: PhysGameColors.metalDark,
+        color: PhysGameColors.muted,
         weight: FontWeight.w600,
         align: TextAlign.right,
       );
@@ -450,7 +549,7 @@ class LabStagePainter extends CustomPainter {
       Paint()
         ..shader = _vGrad(
           gas,
-          const [PhysGameColors.gasTop, PhysGameColors.gasBottom],
+          [PhysGameColors.gasTop, PhysGameColors.gasBottom],
         ),
     );
 
@@ -465,7 +564,7 @@ class LabStagePainter extends CustomPainter {
           ..shader = ui.Gradient.linear(
             Offset(0, _b),
             Offset(0, glowTop),
-            [c.withOpacity(.55 * h.abs()), c.withOpacity(0)],
+            [c.withValues(alpha: .55 * h.abs()), c.withValues(alpha: 0)],
           ),
       );
     }
@@ -505,7 +604,11 @@ class LabStagePainter extends CustomPainter {
         Paint()
           ..shader = _hGrad(
             Rect.fromLTRB(x - 5, lid, x + 5, _b),
-            const [PhysGameColors.metalDark, PhysGameColors.metalLight, PhysGameColors.metalDark],
+            [
+              PhysGameColors.metalDark,
+              PhysGameColors.metalLight,
+              PhysGameColors.metalDark
+            ],
           ),
       );
     } else {
@@ -549,7 +652,7 @@ class LabStagePainter extends CustomPainter {
     final mid = (y1 + y2) / 2;
     final pill = RRect.fromRectAndRadius(
       Rect.fromLTWH(x + 10, mid - 12, 86, 24),
-      const Radius.circular(12),
+      Radius.circular(12),
     );
     canvas.drawRRect(pill, _fill(amber));
     _drawText(
@@ -570,19 +673,19 @@ class LabStagePainter extends CustomPainter {
       ..lineTo(_r, _b)
       ..lineTo(_r, lid);
 
-    canvas.drawPath(walls, _stroke(Colors.white, 4));
+    canvas.drawPath(walls, _stroke(PhysGameColors.wall, 4));
   }
 
   // ── Tampa (pistão) com alça ranhurada ──────────────────────────────
   void _paintLid(Canvas canvas, double lid) {
     final bar = Rect.fromLTRB(50, lid - 14, 466, lid);
-    final barR = RRect.fromRectAndRadius(bar, const Radius.circular(3));
+    final barR = RRect.fromRectAndRadius(bar, Radius.circular(3));
     canvas.drawRRect(
       barR,
       Paint()
         ..shader = _vGrad(
           bar,
-          const [PhysGameColors.metalLight, PhysGameColors.metalDark],
+          [PhysGameColors.metalLight, PhysGameColors.metalDark],
         ),
     );
     canvas.drawRRect(barR, _stroke(PhysGameColors.metalEdge, 1.5));
@@ -594,13 +697,13 @@ class LabStagePainter extends CustomPainter {
 
     // Alça
     final grip = Rect.fromLTRB(366, lid - 44, 432, lid - 20);
-    final gripR = RRect.fromRectAndRadius(grip, const Radius.circular(8));
+    final gripR = RRect.fromRectAndRadius(grip, Radius.circular(8));
     canvas.drawRRect(
       gripR,
       Paint()
         ..shader = _vGrad(
           grip,
-          const [PhysGameColors.metalLight, PhysGameColors.metalDark],
+          [PhysGameColors.metalLight, PhysGameColors.metalDark],
         ),
     );
     canvas.drawRRect(gripR, _stroke(PhysGameColors.metalEdge, 1.5));
@@ -620,16 +723,16 @@ class LabStagePainter extends CustomPainter {
       Paint()
         ..shader = _vGrad(
           pipe,
-          const [PhysGameColors.metalLight, PhysGameColors.metalDark],
+          [PhysGameColors.metalLight, PhysGameColors.metalDark],
         ),
     );
     canvas.drawRect(pipe, _stroke(PhysGameColors.metalEdge, 1));
 
-    for (final r in const [
+    for (final r in [
       Rect.fromLTRB(446, 199, 460, 231),
       Rect.fromLTRB(540, 200, 552, 230),
     ]) {
-      final rr = RRect.fromRectAndRadius(r, const Radius.circular(3));
+      final rr = RRect.fromRectAndRadius(r, Radius.circular(3));
       canvas.drawRRect(rr, _fill(PhysGameColors.metalDark));
       canvas.drawRRect(rr, _stroke(PhysGameColors.metalEdge, 1));
     }
@@ -640,6 +743,7 @@ class LabStagePainter extends CustomPainter {
       StageGeometry.gaugeCenter,
       StageGeometry.gaugeRadius,
       pressureInUnit(engine, unit) / gaugeMax(unit),
+      scale: gaugeScale(unit),
     );
 
     _paintReadout(
@@ -651,14 +755,18 @@ class LabStagePainter extends CustomPainter {
 
   void _paintReadout(Canvas canvas, Rect box, String text) {
     canvas.drawRRect(
-      RRect.fromRectAndRadius(box, const Radius.circular(4)),
+      RRect.fromRectAndRadius(box, Radius.circular(4)),
       _fill(Colors.white),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(box, Radius.circular(4)),
+      _stroke(PhysGameColors.line, 1.2),
     );
     _drawText(
       canvas,
       text,
-      Offset(box.right - 34, box.center.dy),
-      size: 14,
+      Offset(box.right - 26, box.center.dy),
+      size: text.length > 10 ? 12 : 14,
       color: PhysGameColors.navy,
       align: TextAlign.right,
     );
@@ -673,26 +781,27 @@ class LabStagePainter extends CustomPainter {
       Paint()
         ..shader = _vGrad(
           connector,
-          const [PhysGameColors.metalLight, PhysGameColors.metalDark],
+          [PhysGameColors.metalLight, PhysGameColors.metalDark],
         ),
     );
     canvas.drawRect(connector, _stroke(PhysGameColors.metalEdge, 1));
 
-    final glassFill = _fill(Colors.white.withOpacity(.10));
-    final glassEdge = _stroke(PhysGameColors.metalMid, 2);
+    final glassFill = _fill(PhysGameColors.wall.withValues(alpha: .10));
+    final glassEdge = _stroke(PhysGameColors.glass, 2);
 
     final tube = RRect.fromRectAndRadius(
       Rect.fromLTRB(498, 62, 516, 182),
-      const Radius.circular(9),
+      Radius.circular(9),
     );
     canvas.drawRRect(tube, glassFill);
     canvas.drawRRect(tube, glassEdge);
-    canvas.drawCircle(const Offset(507, 178), 16, glassFill);
-    canvas.drawCircle(const Offset(507, 178), 16, glassEdge);
+    canvas.drawCircle(Offset(507, 178), 16, glassFill);
+    canvas.drawCircle(Offset(507, 178), 16, glassEdge);
 
     // Mercúrio
-    canvas.drawCircle(const Offset(507, 178), 11, _fill(PhysGameColors.mercury));
-    final frac = (engine.temperatureK / 700.0).clamp(0.0, 1.0);
+    canvas.drawCircle(Offset(507, 178), 11, _fill(PhysGameColors.mercury));
+    final frac =
+        (engine.temperatureK / GasEngine.maxTemperatureK).clamp(0.0, 1.0);
     final merc = frac * 112;
     canvas.drawRect(
       Rect.fromLTRB(503, 178 - merc, 511, 178),
@@ -700,7 +809,7 @@ class LabStagePainter extends CustomPainter {
     );
 
     // Marcas
-    final tick = _stroke(PhysGameColors.metalMid, 1.5);
+    final tick = _stroke(PhysGameColors.glass, 1.5);
     for (int i = 0; i <= 8; i++) {
       final y = 70.0 + i * 13;
       canvas.drawLine(Offset(522, y), Offset(i.isEven ? 532 : 527, y), tick);
@@ -729,7 +838,7 @@ class LabStagePainter extends CustomPainter {
 
     final collar = RRect.fromRectAndRadius(
       Rect.fromLTRB(446, 409, 460, 431),
-      const Radius.circular(3),
+      Radius.circular(3),
     );
     canvas.drawRRect(collar, _fill(PhysGameColors.metalDark));
     canvas.drawRRect(collar, _stroke(PhysGameColors.metalEdge, 1));
@@ -737,55 +846,55 @@ class LabStagePainter extends CustomPainter {
     // Base
     final base = Rect.fromLTRB(586, 566, 686, 582);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(base, const Radius.circular(6)),
+      RRect.fromRectAndRadius(base, Radius.circular(6)),
       Paint()
         ..shader = _vGrad(
           base,
-          const [PhysGameColors.metalLight, PhysGameColors.metalDark],
+          [PhysGameColors.metalLight, PhysGameColors.metalDark],
         ),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(base, const Radius.circular(6)),
+      RRect.fromRectAndRadius(base, Radius.circular(6)),
       _stroke(PhysGameColors.metalEdge, 1),
     );
     final foot = Rect.fromLTRB(606, 552, 666, 568);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(foot, const Radius.circular(4)),
+      RRect.fromRectAndRadius(foot, Radius.circular(4)),
       Paint()
         ..shader = _hGrad(
           foot,
-          const [
+          [
             PhysGameColors.metalDark,
             PhysGameColors.metalLight,
             PhysGameColors.metalDark,
           ],
-          const [0.0, 0.45, 1.0],
+          [0.0, 0.45, 1.0],
         ),
     );
 
     // Cilindro (roxo PhysGame)
     final barrel = Rect.fromLTRB(614, 430, 658, 554);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(barrel, const Radius.circular(6)),
+      RRect.fromRectAndRadius(barrel, Radius.circular(6)),
       Paint()
         ..shader = _hGrad(
           barrel,
-          const [Color(0xFF4A38C9), Color(0xFF8277F5), Color(0xFF4A38C9)],
-          const [0.0, 0.5, 1.0],
+          [Color(0xFF4A38C9), Color(0xFF8277F5), Color(0xFF4A38C9)],
+          [0.0, 0.5, 1.0],
         ),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(barrel, const Radius.circular(6)),
-      _stroke(const Color(0xFF2E2399), 1.5),
+      RRect.fromRectAndRadius(barrel, Radius.circular(6)),
+      _stroke(Color(0xFF2E2399), 1.5),
     );
 
     // Faixa graduada
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTRB(628, 438, 644, 546),
-        const Radius.circular(3),
+        Radius.circular(3),
       ),
-      _fill(PhysGameColors.metalMid.withOpacity(.92)),
+      _fill(PhysGameColors.metalMid.withValues(alpha: .92)),
     );
     final tick = _stroke(PhysGameColors.metalEdge, 1.2);
     for (int i = 0; i < 12; i++) {
@@ -796,7 +905,7 @@ class LabStagePainter extends CustomPainter {
     // Conexão da mangueira
     final fit = RRect.fromRectAndRadius(
       Rect.fromLTRB(607, 508, 616, 532),
-      const Radius.circular(2),
+      Radius.circular(2),
     );
     canvas.drawRRect(fit, _fill(PhysGameColors.metalDark));
     canvas.drawRRect(fit, _stroke(PhysGameColors.metalEdge, 1));
@@ -809,13 +918,13 @@ class LabStagePainter extends CustomPainter {
     );
 
     final handle = Rect.fromLTRB(596, hy, 676, hy + 14);
-    final handleR = RRect.fromRectAndRadius(handle, const Radius.circular(7));
+    final handleR = RRect.fromRectAndRadius(handle, Radius.circular(7));
     canvas.drawRRect(
       handleR,
       Paint()
         ..shader = _vGrad(
           handle,
-          const [PhysGameColors.metalLight, PhysGameColors.metalDark],
+          [PhysGameColors.metalLight, PhysGameColors.metalDark],
         ),
     );
     canvas.drawRRect(handleR, _stroke(PhysGameColors.metalEdge, 1.5));
@@ -839,42 +948,42 @@ class LabStagePainter extends CustomPainter {
       body,
       Paint()
         ..shader = _hGrad(
-          const Rect.fromLTRB(165, 514, 305, 590),
-          const [
+          Rect.fromLTRB(165, 514, 305, 590),
+          [
             PhysGameColors.metalDark,
             PhysGameColors.metalLight,
             PhysGameColors.metalDark,
           ],
-          const [0.0, 0.4, 1.0],
+          [0.0, 0.4, 1.0],
         ),
     );
     canvas.drawPath(body, _stroke(PhysGameColors.metalEdge, 1.5));
 
     canvas.drawOval(
-      Rect.fromCenter(center: const Offset(235, 514), width: 140, height: 18),
-      _fill(const Color(0xFFE4E7EC)),
+      Rect.fromCenter(center: Offset(235, 514), width: 140, height: 18),
+      _fill(Color(0xFFE4E7EC)),
     );
     canvas.drawOval(
-      Rect.fromCenter(center: const Offset(235, 514), width: 140, height: 18),
+      Rect.fromCenter(center: Offset(235, 514), width: 140, height: 18),
       _stroke(PhysGameColors.metalDark, 1),
     );
     canvas.drawOval(
-      Rect.fromCenter(center: const Offset(235, 515), width: 128, height: 12),
+      Rect.fromCenter(center: Offset(235, 515), width: 128, height: 12),
       _fill(PhysGameColors.slate),
     );
 
     // Trilho: laranja (aquecer) em cima, azul (arrefecer) embaixo.
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTRB(229, 526, 241, 554),
-        const Radius.circular(6),
+        Rect.fromLTRB(229, 526, 241, 554),
+        Radius.circular(6),
       ),
       _fill(PhysGameColors.heatColor),
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTRB(229, 552, 241, 580),
-        const Radius.circular(6),
+        Rect.fromLTRB(229, 552, 241, 580),
+        Radius.circular(6),
       ),
       _fill(PhysGameColors.coolColor),
     );
@@ -882,7 +991,7 @@ class LabStagePainter extends CustomPainter {
     _drawText(
       canvas,
       'Aquecer',
-      const Offset(222, 536),
+      Offset(222, 536),
       size: 10,
       color: PhysGameColors.navy,
       align: TextAlign.right,
@@ -890,7 +999,7 @@ class LabStagePainter extends CustomPainter {
     _drawText(
       canvas,
       'Arrefecer',
-      const Offset(222, 581),
+      Offset(222, 581),
       size: 10,
       color: PhysGameColors.navy,
       align: TextAlign.right,
@@ -901,7 +1010,7 @@ class LabStagePainter extends CustomPainter {
         engine.heaterLevel * StageGeometry.bucketKnobTravel;
     final knob = RRect.fromRectAndRadius(
       Rect.fromCenter(center: Offset(235, ky), width: 52, height: 16),
-      const Radius.circular(6),
+      Radius.circular(6),
     );
     canvas.drawRRect(knob, _fill(PhysGameColors.knob));
     canvas.drawRRect(knob, _stroke(PhysGameColors.knobEdge, 1.5));
@@ -924,7 +1033,7 @@ class LabStagePainter extends CustomPainter {
       Paint()
         ..shader = _vGrad(
           playRect,
-          const [PhysGameColors.purple2, PhysGameColors.purple],
+          [PhysGameColors.purple2, PhysGameColors.purple],
         ),
     );
     canvas.drawCircle(pc, pr, _stroke(Colors.white, 3));
@@ -940,14 +1049,14 @@ class LabStagePainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(pc.dx - 9, pc.dy - 11, 7, 22),
-          const Radius.circular(2),
+          Radius.circular(2),
         ),
         _fill(Colors.white),
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(pc.dx + 3, pc.dy - 11, 7, 22),
-          const Radius.circular(2),
+          Radius.circular(2),
         ),
         _fill(Colors.white),
       );
@@ -955,7 +1064,8 @@ class LabStagePainter extends CustomPainter {
 
     // Passo
     const sc = StageGeometry.stepCenter;
-    canvas.drawCircle(sc, StageGeometry.stepRadius, _fill(PhysGameColors.metalMid));
+    canvas.drawCircle(
+        sc, StageGeometry.stepRadius, _fill(PhysGameColors.metalMid));
     canvas.drawCircle(sc, StageGeometry.stepRadius, _stroke(Colors.white, 2));
     final stepTri = Path()
       ..moveTo(sc.dx - 7, sc.dy - 8)
@@ -966,7 +1076,7 @@ class LabStagePainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(sc.dx + 6, sc.dy - 8, 3.5, 16),
-        const Radius.circular(1),
+        Radius.circular(1),
       ),
       _fill(PhysGameColors.navy),
     );
@@ -974,9 +1084,9 @@ class LabStagePainter extends CustomPainter {
     // Borracha (esvazia a câmara)
     final er = RRect.fromRectAndRadius(
       StageGeometry.eraser,
-      const Radius.circular(6),
+      Radius.circular(6),
     );
-    canvas.drawRRect(er, _fill(const Color(0xFFE4E7EC)));
+    canvas.drawRRect(er, _fill(Color(0xFFE4E7EC)));
     canvas.drawRRect(er, _stroke(PhysGameColors.metalDark, 1));
     final eraserShape = Path()
       ..moveTo(332, 572)
@@ -990,8 +1100,8 @@ class LabStagePainter extends CustomPainter {
       _stroke(PhysGameColors.slate, 1.5, join: StrokeJoin.round),
     );
     canvas.drawLine(
-      const Offset(340, 576),
-      const Offset(352, 576),
+      Offset(340, 576),
+      Offset(352, 576),
       _stroke(PhysGameColors.slate, 1.5, cap: StrokeCap.round),
     );
 
@@ -1049,7 +1159,7 @@ class LabStagePainter extends CustomPainter {
     double radius,
     bool selected,
   ) {
-    final rr = RRect.fromRectAndRadius(rect, const Radius.circular(8));
+    final rr = RRect.fromRectAndRadius(rect, Radius.circular(8));
     canvas.drawRRect(rr, _fill(PhysGameColors.gasTop));
     canvas.drawRRect(
       rr,
@@ -1065,9 +1175,9 @@ class LabStagePainter extends CustomPainter {
   void _paintStopwatch(Canvas canvas) {
     final box = RRect.fromRectAndRadius(
       StageGeometry.stopwatch,
-      const Radius.circular(10),
+      Radius.circular(10),
     );
-    canvas.drawRRect(box, _fill(const Color(0xFF1E1B4B)));
+    canvas.drawRRect(box, _fill(Color(0xFF1E1B4B)));
     canvas.drawRRect(box, _stroke(PhysGameColors.purple2, 1.5));
 
     final r = StageGeometry.stopwatch;
@@ -1076,7 +1186,7 @@ class LabStagePainter extends CustomPainter {
       'CRONÔMETRO',
       Offset(r.left + 14, r.top + 19),
       size: 11,
-      color: const Color(0xFFC7C0FF),
+      color: Color(0xFFC7C0FF),
     );
     _drawText(
       canvas,
@@ -1087,11 +1197,14 @@ class LabStagePainter extends CustomPainter {
     );
 
     // ▶ / ❚❚
-    canvas.drawCircle(StageGeometry.stopwatchPlay, 13, _fill(PhysGameColors.purple2));
+    canvas.drawCircle(
+        StageGeometry.stopwatchPlay, 13, _fill(PhysGameColors.purple2));
     final c = StageGeometry.stopwatchPlay;
     if (view.stopwatchRunning) {
-      canvas.drawRect(Rect.fromLTWH(c.dx - 5, c.dy - 6, 3.5, 12), _fill(Colors.white));
-      canvas.drawRect(Rect.fromLTWH(c.dx + 1.5, c.dy - 6, 3.5, 12), _fill(Colors.white));
+      canvas.drawRect(
+          Rect.fromLTWH(c.dx - 5, c.dy - 6, 3.5, 12), _fill(Colors.white));
+      canvas.drawRect(
+          Rect.fromLTWH(c.dx + 1.5, c.dy - 6, 3.5, 12), _fill(Colors.white));
     } else {
       final tri = Path()
         ..moveTo(c.dx - 4, c.dy - 7)
@@ -1116,8 +1229,8 @@ class LabStagePainter extends CustomPainter {
   // ── Contador de colisões ───────────────────────────────────────────
   void _paintCollisionCounter(Canvas canvas) {
     final r = StageGeometry.collisionCounter;
-    final box = RRect.fromRectAndRadius(r, const Radius.circular(10));
-    canvas.drawRRect(box, _fill(const Color(0xFF3A2A08)));
+    final box = RRect.fromRectAndRadius(r, Radius.circular(10));
+    canvas.drawRRect(box, _fill(Color(0xFF3A2A08)));
     canvas.drawRRect(box, _stroke(PhysGameColors.amber, 1.5));
 
     _drawText(
@@ -1125,7 +1238,7 @@ class LabStagePainter extends CustomPainter {
       'COLISÕES COM A PAREDE',
       Offset(r.left + 14, r.top + 19),
       size: 11,
-      color: const Color(0xFFFDE68A),
+      color: Color(0xFFFDE68A),
     );
     _drawText(
       canvas,
@@ -1139,7 +1252,7 @@ class LabStagePainter extends CustomPainter {
       '${engine.collisionRate.round()}/s',
       Offset(r.right - 14, r.top + 41),
       size: 14,
-      color: const Color(0xFFFDE68A),
+      color: Color(0xFFFDE68A),
       align: TextAlign.right,
     );
   }

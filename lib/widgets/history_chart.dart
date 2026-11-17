@@ -15,7 +15,7 @@ class HistoryChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _HistoryChartPainter(samples),
-      child: const SizedBox.expand(),
+      child: SizedBox.expand(),
     );
   }
 }
@@ -35,13 +35,13 @@ class _HistoryChartPainter extends CustomPainter {
         Offset(plot.left, y),
         Offset(plot.right, y),
         Paint()
-          ..color = PhysGameColors.border
+          ..color = PhysGameColors.line
           ..strokeWidth = 1,
       );
     }
 
     final axis = Paint()
-      ..color = PhysGameColors.slate
+      ..color = PhysGameColors.muted
       ..strokeWidth = 1.2;
 
     canvas.drawLine(
@@ -90,28 +90,28 @@ class _HistoryChartPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = PhysGameColors.purple
+        ..color = PhysGameColors.purple2
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
 
-    _label(canvas, 'P (kPa)', const Offset(4, 2));
+    _label(canvas, 'P (kPa)', Offset(4, 2));
     _label(
       canvas,
       'tempo',
       Offset(plot.center.dx - 16, size.height - 20),
     );
-    _label(canvas, maxP.toStringAsFixed(0), Offset(5, plot.top - 3));
+    _label(canvas, maxP.toStringAsFixed(0), Offset(5, plot.top + 10));
   }
 
   void _label(Canvas canvas, String text, Offset offset) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(
-          color: PhysGameColors.slate,
+        style: TextStyle(
+          color: PhysGameColors.muted,
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
