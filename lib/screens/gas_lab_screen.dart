@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/physgame_theme.dart';
 import '../simulation/gas_engine.dart';
 import '../simulation/gas_particle.dart';
-import '../widgets/gas_chamber.dart';
 import '../widgets/history_chart.dart';
+import '../widgets/lab/phet_lab.dart';
 import '../widgets/pressure_gauge.dart';
 import '../widgets/speed_histogram.dart';
 
@@ -163,8 +163,6 @@ class _GasLabScreenState extends State<GasLabScreen>
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 980;
-
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
               child: Column(
@@ -173,23 +171,22 @@ class _GasLabScreenState extends State<GasLabScreen>
                   _sectionTabs(),
                   const SizedBox(height: 16),
 
-                  if (wide)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 7,
-                          child: _simulationPanel(),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 5,
-                          child: _rightPanel(),
-                        ),
-                      ],
-                    )
-                  else ...[
-                    _simulationPanel(),
+                  // Missão: as etapas ficam acima do laboratório.
+                  if (section == LabSection.mission) ...[
+                    _rightPanel(),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Laboratório no estilo PhET (câmara + painéis laterais).
+                  PhetLab(
+                    engine: engine,
+                    onChanged: () => setState(() {}),
+                    onReset: _resetCurrent,
+                  ),
+
+                  // Energia e Difusão: painel extra abaixo do laboratório.
+                  if (section == LabSection.energy ||
+                      section == LabSection.diffusion) ...[
                     const SizedBox(height: 16),
                     _rightPanel(),
                   ],
@@ -264,81 +261,10 @@ class _GasLabScreenState extends State<GasLabScreen>
     );
   }
 
-  Widget _simulationPanel() {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _sectionTitle,
-                  style: const TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    color: PhysGameColors.navy,
-                  ),
-                ),
-              ),
-              _pressurePill(),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            _sectionSubtitle,
-            style: const TextStyle(
-              color: PhysGameColors.slate,
-              height: 1.35,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 12),
-          AspectRatio(
-            aspectRatio: 1.45,
-            child: GasChamber(
-              engine: engine,
-              onVolumeChanged: (value) {
-                setState(() => engine.setVolume(value));
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _metric(
-                'Pressão',
-                '${engine.pressureKPa.toStringAsFixed(1)} kPa',
-                Icons.speed_rounded,
-              ),
-              _metric(
-                'Volume',
-                '${engine.volumeL.toStringAsFixed(2)} L',
-                Icons.open_in_full_rounded,
-              ),
-              _metric(
-                'Temperatura',
-                '${engine.temperatureK.toStringAsFixed(0)} K',
-                Icons.thermostat_rounded,
-              ),
-              _metric(
-                'Colisões',
-                '${engine.collisionRate.toStringAsFixed(0)}/s',
-                Icons.scatter_plot_rounded,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _rightPanel() {
     switch (section) {
       case LabSection.explore:
-        return _exploreControls();
+        return const SizedBox.shrink();
       case LabSection.energy:
         return _energyPanel();
       case LabSection.diffusion:
@@ -346,74 +272,6 @@ class _GasLabScreenState extends State<GasLabScreen>
       case LabSection.mission:
         return _missionPanel();
     }
-  }
-
-  Widget _exploreControls() {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Controles do sistema',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          _constantSelector(),
-          const SizedBox(height: 18),
-
-          _slider(
-            title: 'Volume',
-            value: engine.volumeL,
-            min: 1,
-            max: 5,
-            divisions: 80,
-            valueText: '${engine.volumeL.toStringAsFixed(2)} L',
-            icon: Icons.open_in_full_rounded,
-            enabled: engine.constantMode != ConstantMode.volume,
-            onChanged: engine.setVolume,
-          ),
-
-          const SizedBox(height: 12),
-
-          _slider(
-            title: 'Temperatura',
-            value: engine.temperatureK,
-            min: 180,
-            max: 650,
-            divisions: 94,
-            valueText: '${engine.temperatureK.toStringAsFixed(0)} K',
-            icon: Icons.thermostat_rounded,
-            enabled: engine.constantMode != ConstantMode.temperature,
-            onChanged: engine.setTemperature,
-          ),
-
-          const SizedBox(height: 12),
-
-          _slider(
-            title: 'Gravidade',
-            value: engine.gravity,
-            min: 0,
-            max: 1,
-            divisions: 20,
-            valueText: engine.gravity == 0
-                ? '0'
-                : '${(engine.gravity * 100).round()}%',
-            icon: Icons.south_rounded,
-            enabled: true,
-            onChanged: engine.setGravity,
-          ),
-
-          const SizedBox(height: 18),
-          _speciesControls(),
-          const SizedBox(height: 18),
-          _thermalControls(),
-        ],
-      ),
-    );
   }
 
   Widget _energyPanel() {
@@ -472,7 +330,7 @@ class _GasLabScreenState extends State<GasLabScreen>
             'Trabalho P·V',
             'Trabalho acumulado sobre o gás: '
                 '${engine.workOnGasJ.toStringAsFixed(2)} J\n\n'
-                'Comprima e expanda o pistão para observar o sinal e a magnitude do trabalho.',
+                'Arraste a tampa para comprimir e expandir o gás e observar o sinal e a magnitude do trabalho.',
           ),
         ],
       ),
@@ -720,7 +578,7 @@ class _GasLabScreenState extends State<GasLabScreen>
               'Reduza somente o volume para aproximadamente 2,00 L.',
           ready: ready,
           readyText: 'Volume alvo atingido.',
-          pendingText: 'Arraste o pistão até V ≈ 2,00 L.',
+          pendingText: 'Arraste a tampa até V ≈ 2,00 L.',
           buttonText: 'Confirmar compressão',
           onPressed: ready
               ? () {
@@ -745,7 +603,7 @@ class _GasLabScreenState extends State<GasLabScreen>
           ready: ready,
           readyText: 'Temperatura alvo atingida.',
           pendingText:
-              'Use os controles térmicos. Atual: ${engine.temperatureK.toStringAsFixed(0)} K.',
+              'Use o aquecedor (balde) ou os botões. Atual: ${engine.temperatureK.toStringAsFixed(0)} K.',
           buttonText: 'Confirmar aquecimento',
           onPressed: ready
               ? () {
@@ -950,126 +808,6 @@ class _GasLabScreenState extends State<GasLabScreen>
     );
   }
 
-  Widget _constantSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Manter constante',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 9),
-        Wrap(
-          spacing: 7,
-          runSpacing: 7,
-          children: ConstantMode.values.map((value) {
-            final selected = engine.constantMode == value;
-
-            return ChoiceChip(
-              selected: selected,
-              label: Text(
-                switch (value) {
-                  ConstantMode.none => 'Nenhuma',
-                  ConstantMode.volume => 'Volume',
-                  ConstantMode.temperature => 'Temperatura',
-                  ConstantMode.pressure => 'Pressão',
-                },
-              ),
-              onSelected: (_) {
-                setState(() => engine.setConstantMode(value));
-              },
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _speciesControls() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Gás na câmara',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 10),
-        _speciesRow(
-          color: PhysGameColors.lightParticle,
-          title: 'Partículas leves',
-          count: engine.lightCount,
-          onAdd: () {
-            setState(() => engine.addParticles(ParticleSpecies.light, 4));
-          },
-          onRemove: () {
-            setState(() => engine.removeParticles(ParticleSpecies.light, 4));
-          },
-        ),
-        const SizedBox(height: 9),
-        _speciesRow(
-          color: PhysGameColors.heavyParticle,
-          title: 'Partículas pesadas',
-          count: engine.heavyCount,
-          onAdd: () {
-            setState(() => engine.addParticles(ParticleSpecies.heavy, 4));
-          },
-          onRemove: () {
-            setState(() => engine.removeParticles(ParticleSpecies.heavy, 4));
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _speciesRow({
-    required Color color,
-    required String title,
-    required int count,
-    required VoidCallback onAdd,
-    required VoidCallback onRemove,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(.07),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 13,
-            height: 13,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: onRemove,
-            icon: const Icon(Icons.remove_circle_outline_rounded),
-          ),
-          Text(
-            '$count',
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: onAdd,
-            icon: const Icon(Icons.add_circle_outline_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _thermalControls() {
     return Row(
       children: [
@@ -1146,39 +884,6 @@ class _GasLabScreenState extends State<GasLabScreen>
                     setState(() => onChanged(v));
                   }
                 : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metric(String label, String value, IconData icon) {
-    return Container(
-      width: 145,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: PhysGameColors.purpleSoft.withOpacity(.55),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 19, color: PhysGameColors.purple),
-          const SizedBox(height: 7),
-          Text(
-            label,
-            style: const TextStyle(
-              color: PhysGameColors.slate,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              color: PhysGameColors.navy,
-            ),
           ),
         ],
       ),
@@ -1339,23 +1044,6 @@ class _GasLabScreenState extends State<GasLabScreen>
     );
   }
 
-  Widget _pressurePill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: PhysGameColors.purpleSoft,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        '${engine.pressureKPa.toStringAsFixed(1)} kPa',
-        style: const TextStyle(
-          color: PhysGameColors.purple,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-
   Widget _xpBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -1450,7 +1138,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   String get _sectionSubtitle {
     switch (section) {
       case LabSection.explore:
-        return 'Arraste o pistão e altere as variáveis livremente.';
+        return 'Arraste a tampa, use a bomba e o aquecedor para alterar as variáveis.';
       case LabSection.energy:
         return 'Compare velocidades de partículas leves e pesadas.';
       case LabSection.diffusion:

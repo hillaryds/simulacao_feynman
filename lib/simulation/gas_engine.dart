@@ -2,7 +2,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'gas_particle.dart';
 
-enum ConstantMode { none, volume, temperature, pressure }
+/// Variável mantida constante (painel "Manter constante").
+///
+/// - [pressure]  = "Pressão ↕V": a pressão fica fixa e o VOLUME se ajusta.
+/// - [pressureT] = "Pressão ↕T": a pressão fica fixa e a TEMPERATURA se ajusta.
+enum ConstantMode { none, volume, temperature, pressure, pressureT }
 
 class SimulationSample {
   final double time;
@@ -21,6 +25,12 @@ class SimulationSample {
 class GasEngine {
   static const double gasConstant = 8.314462618;
   static const double molPerParticle = 0.0025;
+  static const double minTemperatureK = 180.0;
+  static const double maxTemperatureK = 650.0;
+
+  /// Raios normalizados (fração da largura da câmara).
+  static const double lightRadius = 0.017;
+  static const double heavyRadius = 0.022;
 
   final math.Random _random = math.Random(2026);
   final List<GasParticle> particles = [];
@@ -35,6 +45,16 @@ class GasEngine {
 
   bool diffusionMode = false;
   bool barrierOpen = false;
+
+  /// Pausa/continua a simulação (botão play/pause do palco).
+  bool paused = false;
+
+  /// Posição do controle aquecer/arrefecer, de -1 (arrefecer) a +1 (aquecer).
+  double heaterLevel = 0.0;
+
+  /// Tempo simulado acumulado (s) e colisões totais com as paredes.
+  double simTime = 0.0;
+  int totalCollisions = 0;
 
   double collisionRate = 0.0;
   double workOnGasJ = 0.0;
@@ -65,6 +85,7 @@ class GasEngine {
 
   double get pressureKPa => pressurePa / 1000.0;
   double get pressureMmHg => pressurePa / 133.322;
+  double get pressureAtm => pressurePa / 101325.0;
 
   double get pistonY {
     final normalized = ((volumeL - 1.0) / 4.0).clamp(0.0, 1.0);
@@ -95,6 +116,9 @@ class GasEngine {
     constantMode = ConstantMode.none;
     diffusionMode = false;
     barrierOpen = false;
+    heaterLevel = 0;
+    simTime = 0;
+    totalCollisions = 0;
     collisionRate = 0;
     workOnGasJ = 0;
     _collisionWindow = 0;
@@ -115,6 +139,9 @@ class GasEngine {
     constantMode = ConstantMode.volume;
     diffusionMode = true;
     barrierOpen = false;
+    heaterLevel = 0;
+    simTime = 0;
+    totalCollisions = 0;
     collisionRate = 0;
     workOnGasJ = 0;
     _collisionWindow = 0;
@@ -129,13 +156,25 @@ class GasEngine {
 
   void setConstantMode(ConstantMode mode) {
     constantMode = mode;
-    if (mode == ConstantMode.pressure) {
+    if (mode == ConstantMode.pressure || mode == ConstantMode.pressureT) {
       _lockedPressureKPa = pressureKPa;
     }
   }
 
+  /// O volume só pode ser alterado à mão quando não está travado
+  /// (nem diretamente, nem indiretamente por "Pressão ↕V").
+  bool get volumeEditable =>
+      constantMode != ConstantMode.volume &&
+      constantMode != ConstantMode.pressure;
+
+  /// A temperatura só pode ser alterada à mão quando não está travada
+  /// (nem diretamente, nem indiretamente por "Pressão ↕T").
+  bool get temperatureEditable =>
+      constantMode != ConstantMode.temperature &&
+      constantMode != ConstantMode.pressureT;
+
   void setVolume(double value) {
-    if (constantMode == ConstantMode.volume) return;
+    if (!volumeEditable) return;
 
     final oldVolume = volumeL;
     final oldPressure = pressurePa;
@@ -143,6 +182,10 @@ class GasEngine {
     volumeL = value.clamp(1.0, 5.0);
 
     final dV = (volumeL - oldVolume) / 1000.0;
+
+    // Em "Pressão ↕T" a temperatura acompanha o volume.
+    _applyPressureLockIfNeeded();
+
     final newPressure = pressurePa;
     final averagePressure = (oldPressure + newPressure) / 2.0;
 
@@ -153,10 +196,14 @@ class GasEngine {
   }
 
   void setTemperature(double value) {
-    if (constantMode == ConstantMode.temperature) return;
+    if (!temperatureEditable) return;
+    _applyTemperature(value);
+    _applyPressureLockIfNeeded();
+  }
 
+  void _applyTemperature(double value) {
     final oldT = temperatureK;
-    final nextT = value.clamp(180.0, 650.0);
+    final nextT = value.clamp(minTemperatureK, maxTemperatureK);
 
     if (oldT > 0) {
       final factor = math.sqrt(nextT / oldT);
@@ -166,7 +213,6 @@ class GasEngine {
     }
 
     temperatureK = nextT;
-    _applyPressureLockIfNeeded();
   }
 
   void heat(double deltaK) => setTemperature(temperatureK + deltaK);
@@ -186,7 +232,7 @@ class GasEngine {
 
     for (int i = 0; i < count; i++) {
       final isLight = species == ParticleSpecies.light;
-      final radius = isLight ? 0.013 : 0.017;
+      final radius = isLight ? lightRadius : heavyRadius;
       final mass = isLight ? 1.0 : 4.0;
 
       double minX = 0.07;
@@ -242,13 +288,32 @@ class GasEngine {
     _applyPressureLockIfNeeded();
   }
 
+  /// Botão "borracha": esvazia a câmara.
+  void clearParticles() {
+    particles.clear();
+    _lockedPressureKPa = 0;
+    collisionRate = 0;
+  }
+
   void toggleBarrier() {
     if (!diffusionMode) return;
     barrierOpen = !barrierOpen;
   }
 
+  /// Avança exatamente um quadro (botão "passo"), mesmo pausado.
+  void step([double dt = 1 / 60]) {
+    final wasPaused = paused;
+    paused = false;
+    update(dt);
+    paused = wasPaused;
+  }
+
   void update(double dt) {
+    if (paused) return;
     if (dt <= 0 || dt > 0.05) dt = 0.016;
+
+    simTime += dt;
+    _applyHeater(dt);
 
     final top = pistonY;
     const left = 0.03;
@@ -292,6 +357,7 @@ class GasEngine {
 
     _resolveParticleCollisions();
 
+    totalCollisions += collisions;
     _collisionsInWindow += collisions;
     _collisionWindow += dt;
 
@@ -303,6 +369,13 @@ class GasEngine {
 
     _historyClock += dt;
     _recordHistory();
+  }
+
+  /// Aquecedor/resfriador: ±90 K/s no extremo do controle.
+  void _applyHeater(double dt) {
+    if (heaterLevel == 0 || !temperatureEditable || particles.isEmpty) return;
+    _applyTemperature(temperatureK + heaterLevel * 90.0 * dt);
+    _applyPressureLockIfNeeded();
   }
 
   void _collideWithClosedBarrier(GasParticle p) {
@@ -378,17 +451,24 @@ class GasEngine {
   }
 
   void _applyPressureLockIfNeeded() {
-    if (constantMode != ConstantMode.pressure || _lockedPressureKPa <= 0) {
-      return;
+    if (_lockedPressureKPa <= 0 || particles.isEmpty) return;
+
+    if (constantMode == ConstantMode.pressure) {
+      // P = nRT/V constante => ajusta o volume (a tampa sobe/desce).
+      final desiredVolumeM3 =
+          moles * gasConstant * temperatureK / (_lockedPressureKPa * 1000.0);
+
+      volumeL = (desiredVolumeM3 * 1000.0).clamp(1.0, 5.0);
+      _keepParticlesBelowPiston();
+    } else if (constantMode == ConstantMode.pressureT) {
+      // P = nRT/V constante => ajusta a temperatura.
+      final desiredT = _lockedPressureKPa *
+          1000.0 *
+          (volumeL / 1000.0) /
+          (moles * gasConstant);
+
+      _applyTemperature(desiredT);
     }
-
-    if (particles.isEmpty) return;
-
-    final desiredVolumeM3 =
-        moles * gasConstant * temperatureK / (_lockedPressureKPa * 1000.0);
-
-    volumeL = (desiredVolumeM3 * 1000.0).clamp(1.0, 5.0);
-    _keepParticlesBelowPiston();
   }
 
   void _recordHistory({bool force = false}) {

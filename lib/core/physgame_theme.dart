@@ -15,6 +15,33 @@ class PhysGameColors {
 
   static const lightParticle = Color(0xFF6D5EF6);
   static const heavyParticle = Color(0xFFF97316);
+
+  // ── Palco estilo PhET ────────────────────────────────────────────────
+  /// Fundo do palco (o "preto" do PhET, na paleta navy do PhysGame).
+  static const stage = Color(0xFF101828);
+
+  /// Interior do gás (topo → base).
+  static const gasTop = Color(0xFF0B1020);
+  static const gasBottom = Color(0xFF1A1545);
+
+  /// Painéis laterais escuros.
+  static const panel = Color(0xFF1D2939);
+  static const panelBorder = Color(0xFF344054);
+
+  /// Metais (tampa, tubos, bomba, balde).
+  static const metalLight = Color(0xFFF2F4F7);
+  static const metalMid = Color(0xFFD0D5DD);
+  static const metalDark = Color(0xFF98A2B3);
+  static const metalEdge = Color(0xFF667085);
+
+  /// Vidro/mercúrio do termômetro e ponteiro do manômetro.
+  static const mercury = Color(0xFFF04438);
+
+  /// Controle de aquecer / arrefecer.
+  static const heatColor = Color(0xFFF97316);
+  static const coolColor = Color(0xFF2E90FA);
+  static const knob = Color(0xFF67D4EE);
+  static const knobEdge = Color(0xFF0E7490);
 }
 
 class PhysGameTheme {
