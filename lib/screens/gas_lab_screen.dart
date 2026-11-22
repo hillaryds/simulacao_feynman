@@ -6,11 +6,12 @@ import '../simulation/gas_engine.dart';
 import '../simulation/gas_particle.dart';
 import '../widgets/history_chart.dart';
 import '../widgets/lab/lab_painters.dart';
+import '../widgets/lab/boyle_lab.dart';
 import '../widgets/lab/phet_lab.dart';
 import '../widgets/pressure_gauge.dart';
 import '../widgets/speed_histogram.dart';
 
-enum LabSection { explore, energy, diffusion, mission }
+enum LabSection { explore, boyle, energy, diffusion, mission }
 
 class GasLabScreen extends StatefulWidget {
   const GasLabScreen({super.key});
@@ -30,6 +31,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   Duration? lastTick;
 
   LabSection section = LabSection.explore;
+  int boyleResetCounter = 0;
 
   int missionStep = 0;
   int xp = 0;
@@ -73,6 +75,7 @@ class _GasLabScreenState extends State<GasLabScreen>
     }
 
     lastTick = elapsed;
+    if (section == LabSection.boyle) return;
     engine.update(dt);
 
     if (mounted) setState(() {});
@@ -100,6 +103,10 @@ class _GasLabScreenState extends State<GasLabScreen>
   }
 
   void _resetCurrent() {
+    if (section == LabSection.boyle) {
+      setState(() => boyleResetCounter++);
+      return;
+    }
     setState(() {
       if (section == LabSection.diffusion) {
         engine.resetDiffusion();
@@ -132,7 +139,9 @@ class _GasLabScreenState extends State<GasLabScreen>
             final height = constraints.maxHeight;
 
             final Widget body;
-            if (width >= 1180) {
+            if (section == LabSection.boyle) {
+              body = BoyleLab(key: ValueKey(boyleResetCounter));
+            } else if (width >= 1180) {
               body = _wideBody();
             } else if (width >= 820) {
               body = _mediumBody(height);
@@ -354,8 +363,10 @@ class _GasLabScreenState extends State<GasLabScreen>
             child: InkWell(
               customBorder: CircleBorder(),
               onTap: () {
-                PhysGameColors.lightMode.value =
-                    !PhysGameColors.lightMode.value;
+                setState(() {
+                  PhysGameColors.lightMode.value =
+                      !PhysGameColors.lightMode.value;
+                });
               },
               child: SizedBox(
                 width: 38,
@@ -447,6 +458,7 @@ class _GasLabScreenState extends State<GasLabScreen>
         children: [
           _tab(LabSection.explore, Icons.science_rounded, 'Exploração',
               showIcons),
+          _tab(LabSection.boyle, Icons.speed_rounded, 'Boyle', showIcons),
           _tab(LabSection.energy, Icons.bolt_rounded, 'Energia', showIcons),
           _tab(LabSection.diffusion, Icons.swap_horiz_rounded, 'Difusão',
               showIcons),
@@ -500,6 +512,7 @@ class _GasLabScreenState extends State<GasLabScreen>
   Widget _rightPanel() {
     switch (section) {
       case LabSection.explore:
+      case LabSection.boyle:
         return SizedBox.shrink();
       case LabSection.energy:
         return _energyPanel();
@@ -1433,6 +1446,8 @@ class _GasLabScreenState extends State<GasLabScreen>
     switch (section) {
       case LabSection.explore:
         return 'Câmara experimental';
+      case LabSection.boyle:
+        return 'Lei de Boyle';
       case LabSection.energy:
         return 'Energia e velocidades';
       case LabSection.diffusion:
